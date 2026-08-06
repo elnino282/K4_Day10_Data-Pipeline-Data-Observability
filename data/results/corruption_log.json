@@ -1,0 +1,57 @@
+{
+  "strategy": "deterministic_recent_record_corruption_v1",
+  "before_rows": 24,
+  "after_rows": 24,
+  "unique_paper_ids_before": 24,
+  "unique_paper_ids_after": 22,
+  "scenarios": [
+    {
+      "scenario": "drop_latest_records",
+      "affected_count": 2,
+      "paper_ids": [
+        "10.1111/exsy.70341",
+        "10.2118/234689-pa"
+      ]
+    },
+    {
+      "scenario": "blank_summary",
+      "affected_count": 2,
+      "paper_ids": [
+        "10.1007/s10278-026-02086-9",
+        "10.21203/rs.3.rs-10178277/v1"
+      ]
+    },
+    {
+      "scenario": "inject_summary_noise",
+      "affected_count": 2,
+      "paper_ids": [
+        "10.2196/preprints.106157",
+        "10.3390/buildings16132637"
+      ]
+    },
+    {
+      "scenario": "truncate_title",
+      "affected_count": 2,
+      "paper_ids": [
+        "10.2196/preprints.106157",
+        "10.3390/buildings16132637"
+      ]
+    },
+    {
+      "scenario": "stale_publication_date",
+      "affected_count": 2,
+      "paper_ids": [
+        "10.2196/preprints.106157",
+        "10.3390/buildings16132637"
+      ]
+    },
+    {
+      "scenario": "duplicate_rows",
+      "affected_count": 2,
+      "paper_ids": [
+        "10.35314/3y9hy151",
+        "10.20944/preprints202602.0996.v1"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="PaperLens — trợ lý RAG nghiên cứu tích hợp giám sát dữ liệu."
+    />
+    <title>PaperLens — Nghiên cứu có thể truy vết</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,500;6..72,600&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Điều hướng chính">
+        <a class="brand" href="#" aria-label="Trang chủ PaperLens">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M8 7.5h11.5A4.5 4.5 0 0 1 24 12v12.5H12.5A4.5 4.5 0 0 1 8 20V7.5Z"/><path d="M12 11.5h7M12 15.5h8M12 19.5h5"/></svg>
+          </span>
+          <span><strong>PaperLens</strong><small>Trợ lý nghiên cứu</small></span>
+        </a>
+
+        <nav class="nav-list">
+          <button class="nav-item is-active" data-view="assistant" type="button">
+            <span class="nav-icon" aria-hidden="true">✦</span><span>Trợ lý nghiên cứu</span>
+          </button>
+          <button class="nav-item" data-view="observability" type="button">
+            <span class="nav-icon" aria-hidden="true">⌁</span><span>Chất lượng &amp; giám sát</span>
+          </button>
+          <button class="nav-item" data-view="documents" type="button">
+            <span class="nav-icon" aria-hidden="true">▤</span><span>Thư viện bài báo</span>
+          </button>
+          <button class="nav-item" data-view="evaluation" type="button">
+            <span class="nav-icon" aria-hidden="true">✓</span><span>Đánh giá</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+        <div class="snapshot-card">
+          <div class="snapshot-heading"><span class="status-dot"></span> Ảnh chụp dữ liệu đã khóa</div>
+          <p>Crossref · <span data-bind="paperCount">24</span> bản ghi</p>
+          <div class="snapshot-meta"><span>SHA</span><code data-bind="rawHash">đang tải…</code></div>
+        </div>
+        <button class="profile" type="button">
+          <span class="avatar">K4</span>
+          <span><strong>Lab Ngày 10</strong><small>Không gian của nhóm</small></span>
+          <span class="profile-more">•••</span>
+        </button>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <button class="mobile-menu" type="button" aria-label="Mở điều hướng">☰</button>
+          <div class="breadcrumb"><span>Không gian làm việc</span><b>/</b><strong id="page-label">Trợ lý nghiên cứu</strong></div>
+          <div class="topbar-actions">
+            <span class="demo-badge" data-bind="sourceMode">Đang kết nối…</span>
+            <span class="state-picker-label">So sánh dữ liệu:</span>
+            <div class="state-picker" role="group" aria-label="Ba trạng thái thử nghiệm của cùng một pipeline">
+              <button class="state-option is-active" data-state="baseline" type="button" title="Dữ liệu sạch dùng làm mốc so sánh"><span></span>Mốc sạch</button>
+              <button class="state-option" data-state="corrupted" type="button" title="Dữ liệu được cố ý làm hỏng để đo mức suy giảm"><span></span>Cố ý làm lỗi</button>
+              <button class="state-option" data-state="repaired" type="button" title="Dữ liệu được sửa lại từ snapshot thô"><span></span>Sau phục hồi</button>
+            </div>
+          </div>
+        </header>
+
+        <section class="view is-active" id="assistant-view" aria-labelledby="assistant-title">
+          <div class="assistant-layout">
+            <div class="conversation-pane">
+              <div class="conversation-header">
+                <div>
+                  <div class="eyebrow"><span class="live-dot"></span> Chỉ mục sẵn sàng · <span data-bind="collection">papers-baseline</span></div>
+                  <h1 id="assistant-title">Hỏi đáp trên kho nghiên cứu.</h1>
+                  <p>Câu trả lời dựa trên ảnh chụp dữ liệu Crossref hiện tại và luôn liên kết về bài báo nguồn.</p>
+                </div>
+                <button class="icon-button" id="clear-chat" type="button" title="Bắt đầu cuộc trò chuyện mới" aria-label="Bắt đầu cuộc trò chuyện mới">＋</button>
+              </div>
+
+              <div class="suggestion-row" aria-label="Câu hỏi gợi ý">
+                <button type="button">Các phương pháp RAG có tác tử chính là gì?</button>
+                <button type="button">So sánh phương pháp truy xuất giữa các bài báo</button>
+                <button type="button">Những bài báo nào mới nhất?</button>
+              </div>
+
+              <div class="chat-thread" id="chat-thread" aria-live="polite">
+                <article class="message user-message">
+                  <div class="message-label">Bạn</div>
+                  <div class="message-body" id="sample-question">Những ý tưởng chính đằng sau RAG có tác tử là gì?</div>
+                </article>
+                <article class="message assistant-message">
+                  <div class="assistant-avatar" aria-hidden="true">P</div>
+                  <div class="message-content">
+                    <div class="message-label">PaperLens <span>Câu trả lời có nguồn</span></div>
+                    <div class="message-body" id="sample-answer">
+                      RAG có tác tử mở rộng quy trình truy xuất rồi sinh câu trả lời truyền thống bằng một vòng điều khiển tự chủ. Tác tử có thể quyết định khi nào cần truy xuất, viết lại truy vấn, kiểm tra bằng chứng và lặp lại việc tìm kiếm trước khi tổng hợp câu trả lời. Các chủ đề xuyên suốt kho tài liệu này là sử dụng công cụ thích ứng, thu thập bằng chứng lặp và xác minh rõ ràng ngữ cảnh đã truy xuất.
+                    </div>
+                    <div class="citation-list" id="citation-list">
+                      <button class="citation-chip" type="button"><b>1</b> Hệ thống truy xuất có tác tử</button>
+                      <button class="citation-chip" type="button"><b>2</b> RAG thích ứng cho mô hình ngôn ngữ</button>
+                    </div>
+                    <div class="message-actions"><button type="button">Sao chép</button><button type="button">Hữu ích</button><button type="button">Chưa hữu ích</button></div>
+                  </div>
+                </article>
+              </div>
+
+              <form class="composer" id="chat-form">
+                <textarea id="question-input" rows="1" placeholder="Đặt câu hỏi về các bài báo đã lập chỉ mục…" aria-label="Câu hỏi nghiên cứu"></textarea>
+                <div class="composer-footer">
+                  <div class="composer-context"><span>⌁</span> <span data-bind="paperCount">24</span> bài báo · top_k 4</div>
+                  <button class="send-button" type="submit" aria-label="Gửi câu hỏi">
+                    <svg viewBox="0 0 24 24"><path d="m5 12 14-7-4 14-3-6-7-1Z"/><path d="m12 13 7-8"/></svg>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <aside class="evidence-pane" aria-label="Bằng chứng cho câu trả lời">
+              <div class="evidence-header"><div><span class="eyebrow">Chuỗi bằng chứng</span><h2>Vì sao có câu trả lời này?</h2></div><span class="source-count"><span data-bind="sourceCount">2</span> nguồn</span></div>
+              <div class="trust-card">
+                <div class="trust-ring" data-bind="trustScore">94</div>
+                <div><strong data-bind="trustLabel">Ngữ cảnh tốt</strong><p>Kết quả truy xuất và kiểm tra dữ liệu của trạng thái này.</p></div>
+              </div>
+              <div class="evidence-section">
+                <div class="section-heading"><h3>Nguồn đã truy xuất</h3><span>Nhấn một nguồn để xem đoạn RAG đã dùng</span></div>
+                <div id="source-cards"></div>
+              </div>
+              <div class="evidence-section compact-section">
+                <h3>Truy vết câu trả lời</h3>
+                <dl class="trace-list">
+                  <div><dt>Bộ sưu tập</dt><dd data-bind="collection">papers-baseline</dd></div>
+                  <div><dt>Mô hình nhúng</dt><dd data-bind="embeddingModel">đang tải…</dd></div>
+                  <div><dt>Truy xuất</dt><dd>Top <span data-bind="topK">4</span> · cosine</dd></div>
+                  <div><dt>Bộ đánh giá</dt><dd>Gemini · chấm điểm</dd></div>
+                </dl>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="observability-view" aria-labelledby="observability-title">
+          <div class="page-container">
+            <div class="page-heading">
+              <div><span class="eyebrow">Chất lượng &amp; giám sát</span><h1 id="observability-title">Sức khỏe dữ liệu</h1><p>Kiểm tra dữ liệu đầu vào của RAG có đầy đủ, mới và đủ tin cậy trước khi dùng để trả lời hay không.</p></div>
+              <button class="secondary-button" type="button">Xuất báo cáo</button>
+            </div>
+            <div class="observability-explainer">
+              <span aria-hidden="true">i</span>
+              <p><strong>Màn hình này dùng để làm gì?</strong> Nó nối từng câu trả lời với chuỗi <b>raw → clean → index → evaluate → report</b>, cảnh báo khi dữ liệu thiếu hoặc cũ và cho thấy lỗi dữ liệu làm độ chính xác retrieval thay đổi ra sao.</p>
+            </div>
+            <div class="metric-grid">
+              <article class="metric-card"><div class="metric-title">Tỷ lệ truy xuất đúng <span>↗</span></div><strong data-bind="hitRate">91.7%</strong><small data-bind="hitDelta">Mốc tham chiếu ban đầu</small><div class="micro-bars" id="hit-bars"></div></article>
+              <article class="metric-card"><div class="metric-title">Kiểm tra chất lượng <span>✓</span></div><strong><span data-bind="qualityPassed">8</span><em>/ <span data-bind="qualityTotal">8</span></em></strong><small data-bind="qualityLabel">Tất cả kiểm tra đều đạt</small><div class="progress-track"><i data-bind-style="qualityProgress"></i></div></article>
+              <article class="metric-card"><div class="metric-title">Độ mới dữ liệu <span>◷</span></div><strong><span data-bind="freshRecords">22</span><em>/ <span data-bind="paperCount">24</span></em></strong><small data-bind="freshLabel">2 bản ghi vượt ngưỡng tuổi</small><div class="progress-track amber"><i data-bind-style="freshProgress"></i></div></article>
+              <article class="metric-card"><div class="metric-title">Điểm chấm trung bình <span>✦</span></div><strong data-bind="judgeScore">4.4</strong><small>LLM chấm điểm · thang 5 điểm</small><div class="score-dots" id="score-dots"></div></article>
+            </div>
+
+            <div class="dashboard-grid">
+              <article class="panel pipeline-panel">
+                <div class="panel-heading"><div><span class="eyebrow">Lần chạy hiện tại</span><h2>Dòng dõi dữ liệu</h2></div><span class="run-status"><i></i> Hoàn tất</span></div>
+                <div class="pipeline-flow">
+                  <div class="pipeline-node"><span class="node-icon">⇩</span><div><strong>Dữ liệu thô</strong><small>Ảnh chụp Crossref</small></div><b>24</b></div><span class="connector"></span>
+                  <div class="pipeline-node"><span class="node-icon">◇</span><div><strong>Làm sạch</strong><small>Bài báo đã kiểm tra</small></div><b data-bind="paperCount">24</b></div><span class="connector"></span>
+                  <div class="pipeline-node"><span class="node-icon">⌁</span><div><strong>Lập chỉ mục</strong><small data-bind="collectionShort">ban đầu</small></div><b data-bind="paperCount">24</b></div><span class="connector"></span>
+                  <div class="pipeline-node"><span class="node-icon">✓</span><div><strong>Đánh giá</strong><small>Bộ kiểm thử cố định</small></div><b>12</b></div><span class="connector"></span>
+                  <div class="pipeline-node"><span class="node-icon">▤</span><div><strong>Báo cáo</strong><small>Bằng chứng sẵn sàng</small></div><b>MD</b></div>
+                </div>
+                <div class="event-log">
+                  <div class="event-log-header"><span>Sự kiện mới nhất</span><span>Thời gian</span></div>
+                  <div><span><i class="success-icon">✓</i> Hoàn tất kiểm tra chất lượng</span><time>0.8s</time></div>
+                  <div><span><i class="success-icon">✓</i> Đã ghi dữ liệu đánh giá</span><time>8.4s</time></div>
+                  <div><span><i class="success-icon">✓</i> Đã xác minh tệp kê khai mô hình nhúng</span><time>4.1s</time></div>
+                  <div><span><i class="success-icon">✓</i> Đã khóa mã băm dữ liệu thô</span><time>0.2s</time></div>
+                </div>
+              </article>
+
+              <article class="panel comparison-panel">
+                <div class="panel-heading"><div><span class="eyebrow">Thí nghiệm có kiểm soát</span><h2>So sánh trạng thái</h2></div><button class="text-button" type="button">Mở báo cáo ↗</button></div>
+                <div class="legend"><span class="baseline-key">Mốc sạch</span><span class="corrupted-key">Cố ý làm lỗi</span><span class="repaired-key">Sau phục hồi</span></div>
+                <div class="comparison-chart" id="comparison-chart"></div>
+                <div class="recovery-note"><span>↺</span><div><strong>Phục hồi trả lại dữ liệu chuẩn</strong><p>Trạng thái phục hồi được dựng lại từ snapshot thô đã khóa, tuyệt đối không sao chép từ dữ liệu ban đầu.</p></div></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="documents-view" aria-labelledby="documents-title">
+          <div class="page-container">
+            <div class="page-heading"><div><span class="eyebrow">Kho tài liệu nguồn</span><h1 id="documents-title">Thư viện bài báo</h1><p>Kiểm tra các tài liệu sẵn sàng cho truy xuất trong trạng thái đã chọn.</p></div><span class="count-badge"><span data-bind="paperCount">24</span> bản ghi</span></div>
+            <div class="library-toolbar"><label class="search-box"><span>⌕</span><input id="paper-search" type="search" placeholder="Tìm theo tiêu đề, tác giả hoặc DOI…" /></label><button class="filter-button" type="button">Ngày xuất bản⌄</button><button class="filter-button" type="button">Trạng thái chất lượng⌄</button></div>
+            <div class="paper-table" id="paper-table"></div>
+          </div>
+        </section>
+
+        <section class="view" id="evaluation-view" aria-labelledby="evaluation-title">
+          <div class="page-container">
+            <div class="page-heading"><div><span class="eyebrow">Bộ kiểm thử cố định · <span data-bind="evaluationCount">12</span> câu hỏi</span><h1 id="evaluation-title">Bằng chứng đánh giá</h1><p>Cùng câu hỏi, mô hình và top_k được tái sử dụng cho cả ba trạng thái.</p></div><button class="secondary-button" type="button">Tải JSON</button></div>
+            <div class="evaluation-summary">
+              <article><span>Tỷ lệ truy xuất đúng</span><strong data-bind="hitRate">91.7%</strong><small>tìm thấy tài liệu ground truth</small></article>
+              <article><span>Độ chính xác câu trả lời</span><strong data-bind="accuracy">83.3%</strong><small>đồng thuận của LLM chấm điểm</small></article>
+              <article><span>Token F1 trung bình</span><strong data-bind="tokenF1">0.78</strong><small>độ trùng với câu trả lời tham chiếu</small></article>
+              <article><span>Điểm đánh giá</span><strong data-bind="judgeScore">4.4</strong><small>trên thang 5.0</small></article>
+            </div>
+            <article class="panel evaluation-table-panel">
+              <div class="panel-heading"><div><span class="eyebrow">Truy vết từng câu trả lời</span><h2>Kết quả kiểm thử</h2></div><span class="run-status"><i></i> Đã đánh giá</span></div>
+              <div class="evaluation-table" id="evaluation-table"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div class="mobile-overlay"></div>
+    <div class="source-modal" id="source-modal" hidden>
+      <button class="source-modal-backdrop" type="button" data-close-source aria-label="Đóng chi tiết nguồn"></button>
+      <section class="source-dialog" role="dialog" aria-modal="true" aria-labelledby="source-modal-title">
+        <header class="source-dialog-header">
+          <div><span class="eyebrow">Bản ghi nguồn từ Crossref</span><h2 id="source-modal-title"></h2></div>
+          <button class="source-close" type="button" data-close-source aria-label="Đóng">×</button>
+        </header>
+        <dl class="source-details">
+          <div><dt>Tác giả</dt><dd id="source-modal-authors"></dd></div>
+          <div><dt>Ngày xuất bản</dt><dd id="source-modal-published"></dd></div>
+          <div><dt>DOI</dt><dd id="source-modal-doi"></dd></div>
+          <div><dt>Độ tương đồng</dt><dd id="source-modal-score"></dd></div>
+        </dl>
+        <section class="retrieved-passage">
+          <div class="passage-heading"><h3>Đoạn được RAG truy xuất</h3><span>CHUNK ĐƯỢC CHỌN</span></div>
+          <mark id="source-modal-retrieved"></mark>
+          <p>Mỗi bài báo đang là một chunk. Phần nền đậm chính là nội dung retriever chuyển cho bước sinh câu trả lời.</p>
+        </section>
+        <section class="source-abstract">
+          <h3>Abstract đầy đủ trong dữ liệu</h3>
+          <p id="source-modal-summary"></p>
+        </section>
+        <footer class="source-dialog-footer">
+          <span>Crossref cung cấp metadata và abstract; toàn văn phụ thuộc nhà xuất bản.</span>
+          <a id="source-modal-link" href="#" target="_blank" rel="noopener noreferrer">Mở bài báo gốc ↗</a>
+        </footer>
+      </section>
+    </div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

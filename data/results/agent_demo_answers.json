@@ -1,0 +1,15 @@
+{
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "question": "What is the main finding or topic of the paper 'Hi\u2010 RAG : A Hierarchical Retrieval\u2010Augmented Generation Framework for Scalable and Generalisable Tool Selection in Large Language Model Agents'?",
+  "status": "success",
+  "answer": [
+    {
+      "type": "text",
+      "text": "Based on the abstract of the paper, the main findings and topics of **\"Hi-RAG: A Hierarchical Retrieval-Augmented Generation Framework for Scalable and Generalisable Tool Selection in Large Language Model Agents\"** are:\n\n1. **Addressing Limitations of Flat Retrieval:** As LLM tool repositories expand from dozens to hundreds or thousands of endpoints, traditional flat retrieval paradigms (which treat repositories as unstructured lists) suffer from context overload, cross-domain semantic collisions, and reduced selection accuracy.\n2. **The Hi-RAG Framework:** The paper proposes **Hi-RAG**, a Hierarchical Retrieval-Augmented Generation framework that leverages the Type-Service-Tool structure of the Model Context Protocol (MCP) using a coarse-to-fine pipeline:\n   * **Stage 1 (Coarse Retrieval):** Uses a *Tool-as-Proxy* hybrid retrieval strategy combining sparse BM25 search and dense bi-encoder search (fused via Weighted Reciprocal Rank Fusion) to efficiently identify candidate services.\n   * **Stage 2 (Fine Re-ranking):** Performs type-aware re-ranking over a local heterogeneous graph, integrating a domain-level gating mechanism with contextualized tool attention for precise service scoring.\n3. **Introduction of MCPBench:** The authors introduce *MCPBench*, the first benchmark dedicated to hierarchical tool selection, containing 201 tools across 40 real-enterprise services (where 23% of queries require multi-service reasoning).\n4. **Key Performance Findings:**\n   * **Improved Accuracy:** Hi-RAG improves Top-1 accuracy by up to 7.5% for single-service tasks and up to 10.0% for multi-service tasks compared to standard Flat-RAG.\n   * **Token Efficiency:** It reduces token consumption by up to 89% compared to full-context injection.\n   * **Scalability:** Zero-shot evaluations on ToolLLM (comprising 16,464 tools) demonstrate the framework's strong scalability to massive tool repositories.",
+      "extras": {
+        "signature": "EjQKMgERTTIPG8nKIjteV2O7fbr5Ix3VY1WbqCFYA+BxZ5caDwFNoBjd3dhL8S5w9eZ76De/"
+      }
+    }
+  ]
+}

@@ -13,6 +13,7 @@ class Paths:
     project_dir: Path
     workspace_dir: Path
     raw_api_response: Path
+    raw_request_metadata: Path
     raw_records_json: Path
     clean_csv: Path
     clean_json: Path
@@ -25,12 +26,18 @@ class Paths:
     repaired_clean_json: Path
     repaired_embeddings_json: Path
     eval_testset: Path
+    baseline_run_metadata: Path
     baseline_metrics: Path
     baseline_answers: Path
     demo_answers: Path
     quality_dir: Path
     gx_dir: Path
+    baseline_quality_report: Path
+    corrupted_quality_report: Path
+    repaired_quality_report: Path
     freshness_report: Path
+    corrupted_freshness_report: Path
+    repaired_freshness_report: Path
     baseline_report: Path
     corruption_log: Path
     corrupted_metrics: Path
@@ -38,6 +45,11 @@ class Paths:
     repaired_metrics: Path
     repaired_answers: Path
     comparison_report: Path
+
+    @property
+    def baseline_freshness_report(self) -> Path:
+        """Explicit baseline alias kept compatible with the starter path."""
+        return self.freshness_report
 
 
 @dataclass(frozen=True)
@@ -73,14 +85,17 @@ def load_settings(project_dir: Path | None = None) -> Settings:
     freshness_threshold_days = 180
     source_from_date = (datetime.now(UTC).date() - timedelta(days=freshness_threshold_days)).isoformat()
 
-    load_dotenv(workspace / ".env")
+    # Project-local settings take precedence over the optional workspace-level
+    # fallback. Existing process environment variables still remain highest.
     load_dotenv(root / ".env", override=False)
+    load_dotenv(workspace / ".env", override=False)
 
     data_dir = root / "data"
     paths = Paths(
         project_dir=root,
         workspace_dir=workspace,
         raw_api_response=data_dir / "raw" / "crossref_response.json",
+        raw_request_metadata=data_dir / "raw" / "crossref_request.json",
         raw_records_json=data_dir / "raw" / "crossref_records.json",
         clean_csv=data_dir / "clean" / "papers_clean.csv",
         clean_json=data_dir / "clean" / "papers_clean.json",
@@ -93,12 +108,18 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         repaired_clean_json=data_dir / "clean" / "papers_clean_repaired.json",
         repaired_embeddings_json=data_dir / "embeddings" / "papers_embeddings_repaired.json",
         eval_testset=data_dir / "eval" / "test_set.json",
+        baseline_run_metadata=data_dir / "results" / "baseline_run.json",
         baseline_metrics=data_dir / "results" / "baseline_metrics.json",
         baseline_answers=data_dir / "results" / "baseline_answers.json",
         demo_answers=data_dir / "results" / "agent_demo_answers.json",
         quality_dir=data_dir / "quality",
         gx_dir=data_dir / "quality" / "gx",
+        baseline_quality_report=data_dir / "quality" / "baseline_quality.json",
+        corrupted_quality_report=data_dir / "quality" / "corrupted_quality.json",
+        repaired_quality_report=data_dir / "quality" / "repaired_quality.json",
         freshness_report=data_dir / "quality" / "freshness_report.json",
+        corrupted_freshness_report=data_dir / "quality" / "corrupted_freshness_report.json",
+        repaired_freshness_report=data_dir / "quality" / "repaired_freshness_report.json",
         baseline_report=data_dir / "reports" / "phase1_report.md",
         corruption_log=data_dir / "results" / "corruption_log.json",
         corrupted_metrics=data_dir / "results" / "corrupted_metrics.json",
@@ -119,11 +140,11 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         custom_llm_api_key=os.getenv("CUSTOM_LLM_API_KEY"),
         custom_llm_base_url=os.getenv("CUSTOM_LLM_BASE_URL"),
-        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+        embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
         baseline_collection_name="papers-baseline",
         corrupted_collection_name="papers-corrupted",
         repaired_collection_name="papers-repaired",
-        source_api="Crossref REST API",
+        source_api="https://api.crossref.org/works",
         source_query="agentic retrieval augmented generation large language model",
         source_filter=f"from-pub-date:{source_from_date},has-abstract:true",
         max_results=24,

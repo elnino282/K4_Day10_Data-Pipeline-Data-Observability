@@ -10,6 +10,19 @@ from retrieval.index import LocalEmbeddingIndex
 from retrieval.llm import build_llm
 
 
+SYSTEM_PROMPT = """You answer questions only from the indexed scholarly paper corpus sourced from Crossref.
+
+Grounding rules:
+- Use the tools before answering every factual question.
+- State only facts explicitly present in the tool output. Never infer, guess, enrich, or complete missing metadata from a title, abstract, general knowledge, or likely domain.
+- Treat empty fields, missing fields, `unknown`, and `uncategorized` as unavailable information. Report that value exactly or say that the indexed metadata has no information for the requested field.
+- For category or topic questions, return only the category/topic value explicitly stored in metadata. If it is `uncategorized`, answer `uncategorized`; do not propose broader, plausible, or inferred categories.
+- Answer only what was asked. Do not append speculative interpretation, recommendations, or background knowledge.
+- If the corpus does not explicitly support an answer, say: "The indexed corpus does not contain that information."
+- Cite only paper IDs, DOIs, titles, and URLs actually returned by the tools.
+"""
+
+
 def build_agent(settings: Settings, index: LocalEmbeddingIndex):
     @tool
     def semantic_search_papers(query: str, top_k: int = 4) -> str:
@@ -41,11 +54,7 @@ def build_agent(settings: Settings, index: LocalEmbeddingIndex):
     return create_agent(
         model=llm,
         tools=[semantic_search_papers, lookup_paper],
-        system_prompt=(
-            "You answer questions about the indexed scholarly paper corpus sourced from Crossref. "
-            "Use tools before answering factual questions. "
-            "If the indexed corpus does not support the answer, say so clearly."
-        ),
+        system_prompt=SYSTEM_PROMPT,
         name="paper_corpus_agent",
     )
 
