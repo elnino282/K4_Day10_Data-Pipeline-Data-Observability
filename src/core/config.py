@@ -13,6 +13,7 @@ class Paths:
     project_dir: Path
     workspace_dir: Path
     raw_api_response: Path
+    raw_request_metadata: Path
     raw_records_json: Path
     clean_csv: Path
     clean_json: Path
@@ -81,6 +82,7 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         project_dir=root,
         workspace_dir=workspace,
         raw_api_response=data_dir / "raw" / "crossref_response.json",
+        raw_request_metadata=data_dir / "raw" / "crossref_request.json",
         raw_records_json=data_dir / "raw" / "crossref_records.json",
         clean_csv=data_dir / "clean" / "papers_clean.csv",
         clean_json=data_dir / "clean" / "papers_clean.json",
