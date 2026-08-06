@@ -1,7 +1,89 @@
-solution/
+# Environment variables / secrets
 .env
-lab.txt
+.env.*
+!.env.example
+
+# Virtual environments
 .venv/
-src/*.egg-info/
-lab/
+venv/
+env/
+ENV/
+
+# Python cache / compiled files
+__pycache__/
 **/__pycache__/
+*.py[cod]
+*$py.class
+
+# Packaging / build artifacts
+build/
+dist/
+*.egg-info/
+src/*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+
+# Type checker / linter cache
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Local data and generated outputs
+data/raw/
+data/processed/
+output/
+outputs/
+artifacts/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Airflow, nếu dự án có dùng
+airflow.db
+airflow.cfg
+standalone_admin_password.txt
+logs/
+plugins/__pycache__/
+
+# dbt, nếu có dùng
+target/
+dbt_packages/
+logs/
+
+# Project-specific
+lab.txt
+lab/
