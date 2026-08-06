@@ -23,11 +23,11 @@ Không ghi secret. Không sửa tay dữ liệu corrupted và không copy baseli
 ## Kế hoạch phối hợp
 
 ### 00:00–00:30 — Chốt nguồn
-- [ ] Xác minh endpoint/query/filter Crossref với Vai trò 1.
-- [ ] Chốt mapping payload sang `PaperRecord`, quy tắc `paper_id`, run date, sort và deduplicate.
-- [ ] Fetch/load Crossref trong `src/ingestion/crossref.py`; lưu raw HTTP response và `PaperRecord` snapshot vào `data/raw/crossref_response.json` và `data/raw/crossref_records.json`, kèm provenance nguồn/query/filter.
-- [ ] Dùng retry/backoff có giới hạn cho lỗi tạm thời (đặc biệt 429/503), log lỗi cuối không kèm credential.
-- [ ] Gate raw pass: hai artifact raw tồn tại, parse được, có `paper_id` ổn định và provenance đủ để tái lập; nếu fail, dừng cleaning và trả endpoint/path/row expected-vs-actual cùng command tái hiện cho Vai trò 1.
+- [x] Xác minh endpoint/query/filter Crossref với Vai trò 1.
+- [x] Chốt mapping payload sang `PaperRecord`, quy tắc `paper_id`, run date, sort và deduplicate.
+- [x] Fetch/load Crossref trong `src/ingestion/crossref.py`; lưu raw HTTP response và `PaperRecord` snapshot vào `data/raw/crossref_response.json` và `data/raw/crossref_records.json`, kèm provenance nguồn/query/filter.
+- [x] Dùng retry/backoff có giới hạn cho lỗi tạm thời (đặc biệt 429/503), log lỗi cuối không kèm credential.
+- [x] Gate raw pass: hai artifact raw tồn tại, parse được, có `paper_id` ổn định và provenance đủ để tái lập; nếu fail, dừng cleaning và trả endpoint/path/row expected-vs-actual cùng command tái hiện cho Vai trò 1.
 
 ### 00:30–01:05 — Cleaning truy vết
 - [ ] Nhận `data/raw/crossref_records.json` đã pass raw gate làm input cleaning; không fetch/load nguồn sống ở checkpoint này.

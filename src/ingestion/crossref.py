@@ -19,6 +19,12 @@ REQUEST_TIMEOUT_SECONDS = 30
 MAX_REQUEST_ATTEMPTS = 4
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 USER_AGENT = "Day10DataObservabilityLab/1.0 (educational data pipeline)"
+MARKUP_STRIP_PASSES = 3
+
+# Requires a letter after "<" and forbids "<" inside, so a literal comparison such
+# as "p < 0.001" is not treated as the start of a tag. A greedy "<[^>]+>" would
+# match from that "<" to the next real tag's ">" and delete the text in between.
+_TAG_PATTERN = re.compile(r"</?[A-Za-z][^<>]*/?>")
 
 
 @dataclass(frozen=True)
@@ -42,13 +48,25 @@ def _first_text(value: Any) -> str:
     return normalize_whitespace(str(value)) if value is not None else ""
 
 
-def _clean_markup_text(value: Any) -> str:
-    text = _first_text(value)
+def strip_markup(text: str) -> str:
+    """Drop JATS/XML markup while preserving literal comparison operators.
+
+    Crossref abstracts commonly contain tags such as <jats:p>, and they are
+    sometimes escaped one level deeper (&lt;jats:p&gt;), so strip and unescape
+    repeatedly until the text stops changing.
+    """
     if not text:
         return ""
-    # Crossref abstracts commonly contain JATS/XML tags such as <jats:p>.
-    without_tags = re.sub(r"<[^>]+>", " ", unescape(text))
-    return normalize_whitespace(without_tags)
+    for _ in range(MARKUP_STRIP_PASSES):
+        candidate = unescape(_TAG_PATTERN.sub(" ", text))
+        if candidate == text:
+            break
+        text = candidate
+    return normalize_whitespace(_TAG_PATTERN.sub(" ", text))
+
+
+def _clean_markup_text(value: Any) -> str:
+    return strip_markup(_first_text(value))
 
 
 def _request_metadata_path(settings: Settings) -> Path:
