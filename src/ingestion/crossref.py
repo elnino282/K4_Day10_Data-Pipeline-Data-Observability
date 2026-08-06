@@ -22,7 +22,10 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 USER_AGENT = "Day10DataObservabilityLab/1.0 (educational data pipeline)"
 MARKUP_STRIP_PASSES = 3
 
-_TAG_PATTERN = re.compile(r"<[^>]+>")
+# Requires a letter after "<" and forbids "<" inside, so a literal comparison such
+# as "p < 0.001" is not treated as the start of a tag. A greedy "<[^>]+>" would
+# match from that "<" to the next real tag's ">" and delete the text in between.
+_TAG_PATTERN = re.compile(r"</?[A-Za-z][^<>]*/?>")
 _ABSTRACT_LABEL_PATTERN = re.compile(r"^\s*abstract[:\s]*", flags=re.IGNORECASE)
 
 
@@ -53,11 +56,15 @@ def _clean_text(value: Any) -> str:
     return normalize_whitespace(unescape(value))
 
 
-def _strip_markup(value: Any) -> str:
-    """Strip JATS/XML markup. Crossref can contain nested escape tags."""
-    if not isinstance(value, str):
+def strip_markup(text: str) -> str:
+    """Drop JATS/XML markup while preserving literal comparison operators.
+
+    Crossref abstracts commonly contain tags such as <jats:p>, and they are
+    sometimes escaped one level deeper (&lt;jats:p&gt;), so strip and unescape
+    repeatedly until the text stops changing.
+    """
+    if not text:
         return ""
-    text = value
     for _ in range(MARKUP_STRIP_PASSES):
         candidate = unescape(_TAG_PATTERN.sub(" ", text))
         if candidate == text:
@@ -66,16 +73,16 @@ def _strip_markup(value: Any) -> str:
     return normalize_whitespace(_TAG_PATTERN.sub(" ", text))
 
 
+_strip_markup = strip_markup
+
+
 def _strip_jats(abstract: Any) -> str:
     text = _first_text(abstract) if not isinstance(abstract, str) else abstract
-    return _ABSTRACT_LABEL_PATTERN.sub("", _strip_markup(text))
+    return _ABSTRACT_LABEL_PATTERN.sub("", strip_markup(text))
 
 
 def _clean_markup_text(value: Any) -> str:
-    text = _first_text(value)
-    if not text:
-        return ""
-    return _strip_jats(text)
+    return _strip_jats(_first_text(value))
 
 
 def _request_metadata_path(settings: Settings) -> Path:
@@ -342,4 +349,5 @@ def load_raw_records(path: Path) -> list[PaperRecord]:
     if not records:
         raise ValueError(f"Raw records snapshot is empty: {path}")
     return records
+
 

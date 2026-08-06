@@ -9,7 +9,7 @@ import unicodedata
 import pandas as pd
 
 from core.utils import compact_join, normalize_whitespace
-from ingestion.crossref import PaperRecord
+from ingestion.crossref import PaperRecord, strip_markup
 
 CLEAN_COLUMNS = [
     "paper_id",
@@ -31,11 +31,11 @@ CLEAN_COLUMNS = [
 ]
 
 NORMALIZE_RULES = [
+    "text: NFKC + unescape + strip markup (giu lai toan tu so sanh nhu 'p < 0.001')",
     "paper_id: strip + lowercase",
-    "title/summary: normalize_whitespace",
-    "authors/categories: join bang ', ', bo phan tu rong",
-    "published: bat buoc dinh dang YYYY-MM-DD",
-    "text_for_embedding: ghep section khong rong theo thu tu co dinh",
+    "authors/categories: clean tung phan tu, bo rong, bo trung lap theo thu tu",
+    "loai record neu title < 5 ky tu, summary < 40 ky tu hoac published khong parse duoc",
+    "deduplicate theo paper_id (giu ban dau tien), sort published giam dan roi paper_id tang dan",
 ]
 
 MIN_SUMMARY_CHARS = 40
@@ -56,12 +56,15 @@ def _build_text_for_embedding(
 
 
 def build_clean_dataframe(records: list[PaperRecord], run_date: datetime) -> pd.DataFrame:
-    """Normalize source records into the canonical dataframe used by every phase."""
+    """Normalize source records into the canonical dataframe used by every phase.
+
+    Trace cua lan clean nay nam o `df.attrs["cleaning_trace"]`: record vao/ra,
+    record bi loai kem ly do, duplicate key va rule normalize.
+    """
 
     def clean_text(value: object) -> str:
         text = unicodedata.normalize("NFKC", unescape(str(value or "")))
-        text = re.sub(r"<[^>]+>", " ", text)
-        return normalize_whitespace(text)
+        return strip_markup(text)
 
     def clean_list(values: list[str]) -> list[str]:
         normalized = [clean_text(value) for value in (values or [])]
@@ -146,24 +149,23 @@ def build_clean_dataframe(records: list[PaperRecord], run_date: datetime) -> pd.
             }
         )
 
+    def with_trace(frame: pd.DataFrame, dup_keys: list[str]) -> pd.DataFrame:
+        frame.attrs["cleaning_trace"] = {
+            "run_date": run_day.isoformat(),
+            "records_in": len(records),
+            "records_out": int(len(frame)),
+            "dropped_count": len(dropped),
+            "dropped": dropped,
+            "duplicate_keys": dup_keys,
+            "normalize_rules": NORMALIZE_RULES,
+        }
+        return frame
+
     if not rows:
-        df = pd.DataFrame(columns=CLEAN_COLUMNS)
-    else:
-        df = pd.DataFrame(rows, columns=CLEAN_COLUMNS)
-        df = df.drop_duplicates(subset=["paper_id"], keep="first")
-        df = df.sort_values(["published", "paper_id"], ascending=[False, True], kind="stable").reset_index(drop=True)
+        return with_trace(pd.DataFrame(columns=CLEAN_COLUMNS), [])
 
-    df["age_days"] = df["age_days"].astype("int64") if not df.empty else pd.Series(dtype="int64")
-    df["summary_chars"] = df["summary_chars"].astype("int64") if not df.empty else pd.Series(dtype="int64")
-
-    df.attrs["cleaning_trace"] = {
-        "run_date": run_day.isoformat(),
-        "records_in": len(records),
-        "records_out": int(len(df)),
-        "dropped_count": len(dropped),
-        "dropped": dropped,
-        "duplicate_keys": duplicate_keys,
-        "normalize_rules": NORMALIZE_RULES,
-    }
-    return df
+    result = pd.DataFrame(rows, columns=CLEAN_COLUMNS)
+    result = result.drop_duplicates(subset=["paper_id"], keep="first")
+    result = result.sort_values(["published", "paper_id"], ascending=[False, True], kind="stable")
+    return with_trace(result.reset_index(drop=True), duplicate_keys)
 

@@ -8,9 +8,9 @@ from typing import Any
 import pandas as pd
 
 from core.config import Settings
-from core.utils import write_json
+from core.utils import file_sha256, write_json
 from ingestion.cleaning import CLEAN_COLUMNS, NORMALIZE_RULES
-from ingestion.crossref import CROSSREF_API_URL, CROSSREF_ORDER, CROSSREF_SORT
+from ingestion.crossref import CROSSREF_API_URL
 
 MANIFEST_FILENAME = "baseline_manifest.json"
 
@@ -27,10 +27,6 @@ CSV_READ_CONVENTION = (
     "`pdf_url`) se thanh NaN float neu doc mac dinh, pha contract kieu chuoi. "
     "papers_clean.json khong dinh van de nay."
 )
-
-
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def sha256_paper_ids(paper_ids: list[str]) -> str:
@@ -54,7 +50,7 @@ def _artifact_entry(path: Path, project_dir: Path) -> dict[str, Any]:
         "path": relative,
         "present": True,
         "bytes": path.stat().st_size,
-        "sha256": sha256_file(path),
+        "sha256": file_sha256(path),
     }
 
 
@@ -78,8 +74,7 @@ def build_baseline_manifest(
             "query": settings.source_query,
             "filter": settings.source_filter,
             "rows": settings.max_results,
-            "sort": CROSSREF_SORT,
-            "order": CROSSREF_ORDER,
+            "sort": "relevance (mac dinh cua Crossref khi co query, khong gui tham so sort)",
         },
         "clean_contract": {
             "columns": CLEAN_COLUMNS,
@@ -105,6 +100,7 @@ def build_baseline_manifest(
         },
         "artifacts": {
             "raw_api_response": _artifact_entry(paths.raw_api_response, paths.project_dir),
+            "raw_request_metadata": _artifact_entry(paths.raw_request_metadata, paths.project_dir),
             "raw_records_json": _artifact_entry(paths.raw_records_json, paths.project_dir),
             "clean_csv": _artifact_entry(paths.clean_csv, paths.project_dir),
             "clean_json": _artifact_entry(paths.clean_json, paths.project_dir),
