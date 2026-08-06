@@ -19,6 +19,7 @@ export async function getWorkspace(state) {
   }
   return {
     sourceMode: "Dữ liệu mẫu",
+    notice: "Không kết nối được pipeline; giao diện đang dùng dữ liệu mẫu.",
     rawHash: "không có",
     embeddingModel: "dữ liệu mẫu",
     topK: 4,
@@ -46,5 +47,6 @@ export async function askResearchQuestion(question, state) {
     answer: mockAnswer.text,
     sources: mockAnswer.sourceIds.map((index) => papers[index]),
     state,
+    notice: "Agent chưa sẵn sàng; đây là câu trả lời mẫu để kiểm tra giao diện.",
   };
 }

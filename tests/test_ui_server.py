@@ -42,6 +42,14 @@ class PipelineWorkspaceTests(TestCase):
         with self.assertRaisesRegex(ValueError, "Trạng thái dữ liệu"):
             self.workspace_service.workspace("unknown")
 
+    def test_static_ui_exposes_accessible_interaction_contract(self) -> None:
+        html = (PROJECT_DIR / "ui" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('class="skip-link"', html)
+        self.assertIn('role="log"', html)
+        self.assertIn('aria-pressed="true"', html)
+        self.assertIn('role="dialog"', html)
+        self.assertIn('aria-live="polite"', html)
+
     def test_http_server_serves_static_ui_health_and_workspace(self) -> None:
         server = create_server(self.settings, port=0)
         thread = Thread(target=server.serve_forever, daemon=True)
