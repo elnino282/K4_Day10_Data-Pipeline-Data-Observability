@@ -1,6 +1,6 @@
 # Hồ sơ báo cáo của nhóm
 
-Thư mục này chứa báo cáo nhóm và bốn báo cáo cá nhân của repository **K4 Day 10 — Data Pipeline & Data Observability**. Nội dung kỹ thuật và số liệu chính đã được đối chiếu với code/artifact trong repo ngày 2026-08-06; không dùng số liệu giả định.
+Thư mục này chứa báo cáo nhóm và bốn báo cáo cá nhân của repository **K4 Day 10 — Data Pipeline & Data Observability**. Nội dung kỹ thuật và số liệu chính đã được đối chiếu với code/artifact trong repo đến ngày 2026-08-06; không dùng số liệu giả định.
 
 ## 1. Danh mục báo cáo
 
@@ -24,14 +24,14 @@ Repository được ghi trong báo cáo cá nhân: [elnino282/K4_Day10_Data-Pipe
 | Mean token F1 | 1.000 | 0.491114 | 1.000 |
 | Judge accuracy | 1.000 | 0.458333 | 1.000 |
 | Mean judge score | 5.000 | 2.833333 | 5.000 |
-| Ragas answer relevancy | n/a | n/a | n/a |
-| Ragas context precision | n/a | n/a | n/a |
-| Ragas context recall | n/a | n/a | n/a |
-| Ragas faithfulness | n/a | n/a | n/a |
+| Ragas answer relevancy | 0.279116 | 0.228980 | 0.279116 |
+| Ragas context precision | 0.937500 | 0.464120 | 0.937500 |
+| Ragas context recall | 1.000000 | 0.375000 | 1.000000 |
+| Ragas faithfulness | 1.000000 | 0.548611 | 1.000000 |
 | Quality checks | 13/13 | 11/13 | 13/13 |
 | Freshness | `fresh` | `stale_or_invalid` | `fresh` |
 
-Nguồn số liệu: `data/results/*metrics.json`, `data/results/*answers.json`, `data/quality/*.json` và `data/results/corruption_log.json`. Lượt Ragas mới bị Gemini trả HTTP 429 vì quota free-tier 500 request/ngày đã hết trước khi hoàn thành mẫu đầu tiên; do đó metrics hiện ghi `ragas.skipped` và báo cáo để `n/a`, không dùng lại số của answer trace cũ.
+Nguồn số liệu: `data/results/*metrics.json`, `data/results/*answers.json`, `data/quality/*.json` và `data/results/corruption_log.json`. Ragas đã hoàn tất bằng Gemini `gemini-3.1-flash-lite` và OpenAI `text-embedding-3-small`. Corrupted được chấm đủ 24/24 sample có checkpoint; repaired tái sử dụng kết quả baseline vì input hash byte-identical, được ghi rõ trong `ragas_run` thay vì trình bày như một lượt evaluator độc lập.
 
 Test được chạy trực tiếp bằng môi trường `.venv`:
 
@@ -119,6 +119,6 @@ Không commit `.env`, API key, token hoặc log chứa secret. `.env.example` m�
 - [x] Báo cáo nhóm liên kết kết luận với artifact thực tế.
 - [x] Metrics, quality và freshness khớp JSON hiện có.
 - [x] Test hiện tại pass: 49 tests, 5 subtests.
-- [ ] Ragas đã được khởi chạy nhưng chưa hoàn thành do quota Gemini; cần chạy lại khi quota được cấp lại.
+- [x] Ragas đã hoàn tất và bốn metric khớp các JSON hiện tại; repaired có provenance tái sử dụng baseline do input byte-identical.
 - [x] Có `baseline_run.json`, `comparison_metrics.json` và `repair_validation.json` từ pipeline hiện tại.
 - [x] Đã chạy lại Phase 1 và corruption/repair flow theo đúng thứ tự.

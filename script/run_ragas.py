@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import os
+from statistics import mean
 
 from core.config import load_settings
 from core.utils import read_json, write_json, write_text
@@ -37,6 +38,60 @@ def _evaluate(settings, state: str, answers: list[dict]) -> dict:
         raise RuntimeError(result["error"])
     print(json.dumps({state: result}, indent=2), flush=True)
     return result
+
+
+def _evaluate_with_checkpoints(
+    settings,
+    state: str,
+    answers: list[dict],
+    input_hash: str,
+    metrics_path,
+) -> dict:
+    """Evaluate rows independently so a quota/timeout failure can be resumed."""
+    progress_path = metrics_path.with_name(f"{state}_ragas_progress.json")
+    progress = {
+        "input_sha256": input_hash,
+        "evaluator_model": settings.model_name,
+        "embedding_model": settings.embedding_model,
+        "sample_count": len(answers),
+        "rows": [],
+    }
+    if progress_path.exists():
+        saved = read_json(progress_path)
+        if all(
+            saved.get(key) == progress[key]
+            for key in (
+                "input_sha256",
+                "evaluator_model",
+                "embedding_model",
+                "sample_count",
+            )
+        ) and all(_valid_result(row.get("ragas")) for row in saved.get("rows", [])):
+            progress = saved
+            print(
+                f"Resuming {state} from {len(progress['rows'])}/{len(answers)} samples.",
+                flush=True,
+            )
+
+    for index in range(len(progress["rows"]), len(answers)):
+        result = _evaluate(
+            settings,
+            f"{state}[{index + 1}/{len(answers)}]",
+            [answers[index]],
+        )
+        progress["rows"].append(
+            {
+                "index": index,
+                "id": answers[index].get("id"),
+                "ragas": result,
+            }
+        )
+        write_json(progress_path, progress)
+
+    return {
+        metric: mean(float(row["ragas"][metric]) for row in progress["rows"])
+        for metric in RAGAS_METRICS
+    }
 
 
 def _input_sha256(answers: list[dict]) -> str:
@@ -99,7 +154,13 @@ def main() -> None:
                 flush=True,
             )
         else:
-            ragas_result = _evaluate(settings, state, answers)
+            ragas_result = _evaluate_with_checkpoints(
+                settings,
+                state,
+                answers,
+                input_hash,
+                metrics_path,
+            )
             source_state = state
             result_evaluated_at = evaluated_at
         result_cache[input_hash] = (ragas_result, source_state, result_evaluated_at)

@@ -33,7 +33,7 @@ Generated at `2026-08-06T15:46:09.408578+00:00` from the artifacts produced by t
 | `judge_accuracy` | 1.000 | `████████████████████` |
 | `mean_judge_score` | 5.000 | `████████████████████` |
 
-Ragas: Set RUN_RAGAS=1 to enable the slower Ragas pass.
+Ragas: answer_relevancy=0.279, context_precision=0.937, context_recall=1.000, faithfulness=1.000
 
 ## Data quality checks
 

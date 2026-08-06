@@ -1,6 +1,6 @@
 # Corruption, Repair and RAG Impact Report
 
-Generated at `2026-08-06T16:16:43.689243+00:00`. All three states use the same persisted evaluation set.
+Generated at `2026-08-06T17:57:10.089781+00:00`. All three states use the same persisted evaluation set.
 
 ## Executive conclusion
 
@@ -14,10 +14,10 @@ Corruption changed retrieval hit rate by **-0.500** and token F1 by **-0.509**. 
 | `mean_token_f1` | 1.000 | 0.491 | 1.000 | -0.509 | 0.509 |
 | `judge_accuracy` | 1.000 | 0.458 | 1.000 | -0.542 | 0.542 |
 | `mean_judge_score` | 5.000 | 2.833 | 5.000 | -2.167 | 2.167 |
-| `ragas.answer_relevancy` | n/a | n/a | n/a | n/a | n/a |
-| `ragas.context_precision` | n/a | n/a | n/a | n/a | n/a |
-| `ragas.context_recall` | n/a | n/a | n/a | n/a | n/a |
-| `ragas.faithfulness` | n/a | n/a | n/a | n/a | n/a |
+| `ragas.answer_relevancy` | 0.279 | 0.229 | 0.279 | -0.050 | 0.050 |
+| `ragas.context_precision` | 0.937 | 0.464 | 0.937 | -0.473 | 0.473 |
+| `ragas.context_recall` | 1.000 | 0.375 | 1.000 | -0.625 | 0.625 |
+| `ragas.faithfulness` | 1.000 | 0.549 | 1.000 | -0.451 | 0.451 |
 
 ### Retrieval hit-rate visualization
 

@@ -5,6 +5,19 @@
   "judge_accuracy": 0.4583333333333333,
   "mean_judge_score": 2.8333333333333335,
   "ragas": {
-    "skipped": "Set RUN_RAGAS=1 to enable the slower Ragas pass."
+    "context_precision": 0.4641203703359182,
+    "answer_relevancy": 0.2289801318584627,
+    "context_recall": 0.375,
+    "faithfulness": 0.5486111111111112
+  },
+  "ragas_run": {
+    "evaluated_at_utc": "2026-08-06T17:37:41.050437+00:00",
+    "evaluator_provider": "gemini",
+    "evaluator_model": "gemini-3.1-flash-lite",
+    "embedding_model": "text-embedding-3-small",
+    "answer_relevancy_strictness": 1,
+    "input_sha256": "3e41dd91ab701ea3a1fbfeedaea218a83c0621aebb15459dece300e38958f37b",
+    "source_state": "corrupted",
+    "reused_identical_inputs": false
   }
 }

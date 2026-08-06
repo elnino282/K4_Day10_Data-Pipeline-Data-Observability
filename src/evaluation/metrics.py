@@ -119,7 +119,7 @@ def run_ragas(
             llm=build_llm(settings=settings, temperature=0.0),
             embeddings=build_embeddings(settings),
             run_config=RunConfig(
-                timeout=int(os.getenv("RAGAS_TIMEOUT_SECONDS", "90")),
+                timeout=int(os.getenv("RAGAS_TIMEOUT_SECONDS", "300")),
                 # The Gemini free tier is limited to 15 generation requests/minute.
                 # A single worker plus a retry window longer than one quota interval
                 # prevents a full Ragas pass from failing after a successful smoke test.

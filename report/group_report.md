@@ -8,7 +8,7 @@
 | Nhóm | K4 Day 10 — Data Pipeline & Observability |
 | Repository | [elnino282/K4_Day10_Data-Pipeline-Data-Observability](https://github.com/elnino282/K4_Day10_Data-Pipeline-Data-Observability) |
 | Ngày dữ liệu và artifact | 2026-08-06 |
-| Ngày kiểm tra báo cáo | 2026-08-06 |
+| Ngày kiểm tra báo cáo | 2026-08-07 |
 
 ### Thành viên và phạm vi chính
 
@@ -27,7 +27,7 @@ Báo cáo này chỉ sử dụng ba nguồn bằng chứng có trong repo:
 
 1. mã nguồn hiện tại trong `src/`, `script/` và `tests/`;
 2. artifact hiện có trong `data/`;
-3. các lệnh test và hai pipeline chạy trực tiếp bằng `.venv` ngày 2026-08-06.
+3. các lệnh test và hai pipeline chạy trực tiếp bằng `.venv` ngày 2026-08-06, cùng lượt Ragas hoàn tất ngày 2026-08-07.
 
 Artifact ghi nhận một pipeline RAG trên 24 bản ghi Crossref với ba trạng thái baseline, corrupted và repaired. Baseline và repaired đều đạt retrieval hit rate `1.000`, mean token F1 `1.000`, judge accuracy `1.000`, mean judge score `5.000`, quality `13/13` và freshness `fresh`. Sau corruption, các chỉ số lần lượt còn `0.500`, `0.491114`, `0.458333`, `2.833333`; quality còn `11/13` và freshness thành `stale_or_invalid`.
 
@@ -144,7 +144,7 @@ Mỗi sample có `id`, `question_type`, `question`, `ground_truth` và `ground_t
 | Mean judge score | Trung bình score 1–5 |
 | Ragas | Bốn metric chạy bằng `script/run_ragas.py` trên answer trace đã lưu |
 
-Lượt `script/run_ragas.py` trên answer trace mới đã được khởi chạy bằng Gemini `gemini-3.1-flash-lite` và OpenAI `text-embedding-3-small`, nhưng Gemini trả HTTP 429 trước khi hoàn thành mẫu đầu tiên vì quota free-tier theo ngày đã đạt giới hạn 500 request. Vì vậy ba metrics artifact hiện giữ trạng thái `ragas.skipped`; báo cáo không tái sử dụng số Ragas của answer trace cũ và không điền số giả. Cần chạy lại lệnh sau khi quota được cấp lại để có bốn metric Ragas mới.
+Lượt `script/run_ragas.py` đã hoàn tất trên đủ 24 answer trace của mỗi trạng thái bằng Gemini `gemini-3.1-flash-lite` và OpenAI `text-embedding-3-small`. Do giới hạn quota/độ trễ, corrupted được chấm tuần tự theo từng sample và ghi checkpoint sau mỗi sample; bốn số tổng hợp là trung bình cộng của 24 score theo sample. Baseline dùng artifact Ragas đã được xác minh bằng input hash. Repaired có input byte-identical với baseline (`0231bcbb...a80992`) nên runner tái sử dụng đúng kết quả baseline và ghi `source_state=baseline`, `reused_identical_inputs=true`; đây không phải một lượt gọi evaluator độc lập.
 
 ## 7. Kết quả baseline, corrupted và repaired
 
@@ -155,10 +155,10 @@ Lượt `script/run_ragas.py` trên answer trace mới đã được khởi ch�
 | Mean token F1 | 1.000000 | 0.491114 | 1.000000 | -0.508886 | +0.508886 |
 | Judge accuracy | 1.000000 | 0.458333 | 1.000000 | -0.541667 | +0.541667 |
 | Mean judge score | 5.000 | 2.833333 | 5.000 | -2.166667 | +2.166667 |
-| Ragas answer relevancy | n/a | n/a | n/a | n/a | n/a |
-| Ragas context precision | n/a | n/a | n/a | n/a | n/a |
-| Ragas context recall | n/a | n/a | n/a | n/a | n/a |
-| Ragas faithfulness | n/a | n/a | n/a | n/a | n/a |
+| Ragas answer relevancy | 0.279116 | 0.228980 | 0.279116 | -0.050136 | +0.050136 |
+| Ragas context precision | 0.937500 | 0.464120 | 0.937500 | -0.473380 | +0.473380 |
+| Ragas context recall | 1.000000 | 0.375000 | 1.000000 | -0.625000 | +0.625000 |
+| Ragas faithfulness | 1.000000 | 0.548611 | 1.000000 | -0.451389 | +0.451389 |
 
 Đối chiếu answer traces:
 
@@ -168,7 +168,7 @@ Lượt `script/run_ragas.py` trên answer trace mới đã được khởi ch�
 | Corrupted | 24 | 12 | 11 |
 | Repaired | 24 | 24 | 24 |
 
-Kết luận được artifact hỗ trợ: corruption làm giảm rõ rệt retrieval và chất lượng câu trả lời; rebuild repaired khôi phục các metric về đúng giá trị baseline trên cùng test set.
+Kết luận được artifact hỗ trợ: corruption làm giảm rõ rệt retrieval, chất lượng câu trả lời và cả bốn metric Ragas; rebuild repaired khôi phục input answer trace byte-identical với baseline, nên các metric repaired trở về đúng giá trị baseline trên cùng test set.
 
 ## 8. Data quality và freshness
 
@@ -227,6 +227,7 @@ Kết quả đã xác minh trong lượt audit:
 - `python -m pytest -q`: `49 passed, 5 subtests passed`;
 - `python script/run_phase1.py`: hoàn tất, sinh `baseline_run.json`, baseline metrics/answers, quality, freshness và report;
 - `python script/run_corruption_flow.py`: hoàn tất, sinh lại corrupted/repaired artifacts, `comparison_metrics.json`, `repair_validation.json` và `corruption_report.md`;
+- `python script/run_ragas.py`: hoàn tất đủ 24/24 sample corrupted, tái sử dụng baseline cho repaired có input hash giống hệt, rồi cập nhật ba metrics artifact và `comparison_metrics.json`;
 - ba answer trace có lần lượt 24/24, 12/24 và 24/24 retrieval hit; không trace nào chứa marker `Fallback heuristic judge`.
 
 Hai pipeline cần `OPENAI_API_KEY` cho `text-embedding-3-small` và credential của evaluator đang cấu hình. Các khóa chỉ được kiểm tra ở dạng có/không, không được in vào log hay báo cáo.
@@ -237,7 +238,7 @@ Hai pipeline cần `OPENAI_API_KEY` cho `text-embedding-3-small` và credential 
 2. **Metadata raw còn đường dẫn máy cũ.** Hai trường mô tả artifact trong `crossref_request.json` vẫn chứa prefix `D:\VinUni\...` từ máy tạo snapshot. Pipeline không dùng hai chuỗi này để đọc file và `baseline_run.json` khóa nội dung bằng SHA-256, nhưng provenance nên dùng đường dẫn tương đối để portable hơn.
 3. **Evaluation có exact-title lookup.** Câu hỏi chứa nguyên title và QA ưu tiên exact lookup trước semantic results. Vì vậy hit rate baseline `1.0` không đại diện cho một benchmark semantic retrieval thuần túy.
 4. **Judge có fallback.** Khi LLM evaluator lỗi, code vẫn tạo judge score bằng heuristic. Ba answer artifact vừa sinh không có marker fallback, nhưng chưa có log request độc lập để audit provider theo từng lời gọi.
-5. **Ragas chưa hoàn thành do quota Gemini.** E2E và lượt Ragas đều cấu hình `gemini-3.1-flash-lite`, nhưng lượt Ragas mới bị HTTP 429 do quota 500 request/ngày. Không có `ragas_run` mới; các metric Ragas hiện được trình bày là `n/a`.
+5. **Ragas phụ thuộc evaluator và cách lập lịch.** Lượt hoàn tất dùng `answer_relevancy` strictness 1 để tương thích Gemini, corrupted được chấm theo 24 batch một sample có checkpoint, còn repaired tái sử dụng baseline vì input hash giống hệt. Các số này hợp lệ cho cấu hình đã ghi trong `ragas_run`, nhưng một model, strictness hoặc lần sinh evaluator khác có thể cho kết quả khác.
 6. **Crossref là nguồn sống.** Bật `REFRESH_SOURCE=1` có thể đổi corpus; so sánh chỉ hợp lệ khi khóa cùng raw snapshot, embedding model, `top_k` và test set.
 7. **Agent demo là artifact lịch sử độc lập.** `agent_demo_answers.json` vẫn ghi model `gemini-3.5-flash-lite`; file này không được dùng để tính bất kỳ metric E2E nào trong báo cáo và không được đổi nhãn thành 3.1 vì chưa tái sinh thành công bằng model mới.
 
@@ -247,7 +248,7 @@ Hai pipeline cần `OPENAI_API_KEY` cho `text-embedding-3-small` và credential 
 - Chuyển các đường dẫn trong request metadata sang đường dẫn tương đối và ghi rõ `used_cached_snapshot` trong machine-readable run metadata.
 - Tách benchmark semantic-only khỏi exact-title lookup; bổ sung câu hỏi paraphrase và multi-document.
 - Ghi rõ judge backend là LLM hay heuristic cho từng sample và tổng hợp fallback count vào metrics.
-- Giữ metadata `ragas_run`, input hash và cấu hình timeout/retry khi chạy lại để phân biệt thay đổi evaluator với thay đổi dữ liệu.
+- Giữ metadata `ragas_run`, input hash, checkpoint theo sample và cấu hình timeout/retry khi chạy lại để phân biệt thay đổi evaluator với thay đổi dữ liệu.
 - Bổ sung timeout/retry có giới hạn cho LLM judge để lỗi provider không làm một lượt evaluation chờ quá lâu.
 
 ## 13. Checklist bàn giao
@@ -257,7 +258,7 @@ Hai pipeline cần `OPENAI_API_KEY` cho `text-embedding-3-small` và credential 
 - [x] Baseline/corrupted/repaired được so trên cùng test-set hash.
 - [x] Raw, clean, embedding manifests, eval, answers, metrics, quality và reports đều có artifact.
 - [x] Unit/integration tests hiện tại pass: 49 tests và 5 subtests.
-- [ ] Ragas đã được khởi chạy nhưng chưa hoàn thành do quota Gemini; cần chạy lại khi quota được cấp lại.
+- [x] Ragas đã hoàn tất: baseline và corrupted có kết quả thực, repaired tái sử dụng baseline do input byte-identical; metadata/hash được lưu trong `ragas_run`.
 - [x] `baseline_run.json` khóa raw/clean/test-set hash, embedding model, collection, `top_k` và evaluator.
 - [x] `comparison_metrics.json` và `repair_validation.json` được sinh lại bởi corruption flow hiện tại.
 - [x] Phase 1 và corruption/repair flow đã chạy lại thành công theo revision hiện tại.
