@@ -97,6 +97,7 @@ h1 { margin: 9px 0 8px; font-family: "Newsreader", Georgia, serif; font-size: cl
 .user-message { width: fit-content; max-width: 78%; margin-left: auto; padding: 10px 13px; border: 1px solid #dae4df; border-radius: 14px 14px 3px 14px; background: #eef4f1; }
 .user-message .message-label { color: var(--green-dark); }
 .assistant-message { width: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+.assistant-message .message-body { padding: 9px 11px; border-left: 3px solid var(--mint); border-radius: 0 9px 9px 0; color: var(--green-dark); background: #eff8f4; }
 .message-content { min-width: 0; }
 .assistant-avatar { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 8px; color: var(--nav); background: var(--mint); font-family: "Newsreader", Georgia, serif; font-weight: 600; }
 .citation-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
