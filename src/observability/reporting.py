@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from core.utils import write_text
@@ -9,42 +10,34 @@ def _value(payload: dict[str, Any], key: str, default: Any = "n/a") -> Any:
     return payload.get(key, default) if isinstance(payload, dict) else default
 
 
-def _metric_lines(metrics: dict[str, Any]) -> list[str]:
-    keys = ["samples", "retrieval_hit_rate", "mean_token_f1", "judge_accuracy", "mean_judge_score"]
-    return [f"- `{key}`: {_value(metrics, key)}" for key in keys]
+def _metric(value: Any, digits: int = 3) -> str:
+    if isinstance(value, bool):
+        return "pass" if value else "fail"
+    if isinstance(value, (int, float)):
+        return f"{value:.{digits}f}"
+    return str(value if value is not None else "n/a")
 
 
-def _quality_lines(quality: dict[str, Any]) -> list[str]:
-    summary = _value(quality, "summary", {})
-    lines = [
-        f"- `state`: {_value(quality, 'state')}",
-        f"- `passed`: {_value(quality, 'passed')}",
-        f"- `input_rows`: {_value(quality, 'input_rows')}",
-    ]
-    if isinstance(summary, dict):
-        for key, value in summary.items():
-            lines.append(f"- `{key}`: {value}")
-    return lines
-
-
-def _freshness_lines(freshness: dict[str, Any]) -> list[str]:
-    keys = [
-        "status",
-        "is_fresh",
-        "latest_published",
-        "oldest_published",
-        "stale_rows",
-        "total_rows",
-        "freshness_threshold_days",
-    ]
-    return [f"- `{key}`: {_value(freshness, key)}" for key in keys]
-
-
-def _delta(after: dict[str, Any], before: dict[str, Any], key: str) -> str:
-    try:
-        return f"{float(_value(after, key)) - float(_value(before, key)):.4f}"
-    except (TypeError, ValueError):
+def _quality_summary(quality: dict[str, Any] | None) -> str:
+    if not quality:
         return "n/a"
+    stats = quality.get("statistics", {})
+    if stats:
+        return f"{stats.get('successful_checks', 0)}/{stats.get('evaluated_checks', 0)} pass"
+    checks = quality.get("checks", [])
+    if checks:
+        passed = sum(1 for c in checks if c.get("passed") or c.get("success"))
+        return f"{passed}/{len(checks)} pass"
+    return "n/a"
+
+
+def _bar(value: Any, scale: float = 1.0, width: int = 20) -> str:
+    try:
+        normalized = max(0.0, min(1.0, float(value) / scale))
+    except (TypeError, ValueError):
+        normalized = 0.0
+    filled = round(normalized * width)
+    return "█" * filled + "░" * (width - filled)
 
 
 def generate_phase1_report(
@@ -54,29 +47,73 @@ def generate_phase1_report(
     quality: dict[str, Any],
     freshness: dict[str, Any],
 ) -> None:
-    """Write a baseline markdown report from real artifact payloads."""
-    source_lines = [f"- `{key}`: {value}" for key, value in source_summary.items()]
-    ragas = _value(metrics, "ragas", {})
-    ragas_line = ragas if isinstance(ragas, str) else ", ".join(f"{key}: {value}" for key, value in ragas.items())
-    text = "\n".join(
-        [
-            "# Phase 1 Baseline Report",
-            "",
-            "## Source",
-            *source_lines,
-            "",
-            "## Evaluation Metrics",
-            *_metric_lines(metrics),
-            f"- `ragas`: {ragas_line}",
-            "",
-            "## Data Quality",
-            *_quality_lines(quality),
-            "",
-            "## Freshness",
-            *_freshness_lines(freshness),
-            "",
-        ]
-    )
+    """Write a baseline report whose claims are derived from runtime artifacts."""
+    checks = quality.get("checks", [])
+    check_rows = "\n".join(
+        f"| `{item.get('name')}` | {item.get('dimension', 'quality')} | {'✅' if item.get('success', item.get('passed')) else '❌'} | "
+        f"{item.get('observed')} | {item.get('expectation')} |"
+        for item in checks
+    ) or "| _No checks_ | - | ❌ | - | - |"
+    ragas = metrics.get("ragas", {})
+    ragas_note = ragas.get("skipped") or ragas.get("error") or ", ".join(
+        f"{key}={_metric(value)}" for key, value in ragas.items()
+    ) if isinstance(ragas, dict) else str(ragas)
+    generated_at = datetime.now(UTC).isoformat()
+    text = f"""# Baseline Pipeline Report
+
+Generated at `{generated_at}` from the artifacts produced by this run.
+
+## Executive summary
+
+- Source: **{source_summary.get('source', 'Crossref REST API')}**
+- Parsed / cleaned records: **{source_summary.get('raw_record_count', 'n/a')} / {source_summary.get('clean_record_count', 'n/a')}**
+- Evaluation samples: **{metrics.get('samples', 0)}**
+- Data quality: **{'PASS' if quality.get('overall_success', quality.get('passed')) else 'FAIL'}** ({_quality_summary(quality)})
+- Freshness: **{str(freshness.get('status', 'unknown')).upper()}**
+
+## Source lineage and schema
+
+| Item | Runtime value |
+|---|---|
+| API | `{source_summary.get('api_url', 'https://api.crossref.org/works')}` |
+| Query | `{source_summary.get('query', '')}` |
+| Filter | `{source_summary.get('filter', '')}` |
+| Max requested | {source_summary.get('max_results', 'n/a')} |
+| Raw response | `{source_summary.get('raw_response_path', '')}` |
+| Normalized raw records | `{source_summary.get('raw_records_path', '')}` |
+| Clean schema | `{', '.join(source_summary.get('clean_schema', []))}` |
+
+## Retrieval and answer quality
+
+| Metric | Value | Visual |
+|---|---:|---|
+| `retrieval_hit_rate` | {_metric(metrics.get('retrieval_hit_rate'))} | `{_bar(metrics.get('retrieval_hit_rate'))}` |
+| `mean_token_f1` | {_metric(metrics.get('mean_token_f1'))} | `{_bar(metrics.get('mean_token_f1'))}` |
+| `judge_accuracy` | {_metric(metrics.get('judge_accuracy'))} | `{_bar(metrics.get('judge_accuracy'))}` |
+| `mean_judge_score` | {_metric(metrics.get('mean_judge_score'))} | `{_bar(metrics.get('mean_judge_score'), scale=5.0)}` |
+
+Ragas: {ragas_note}
+
+## Data quality checks
+
+| Check | Dimension | Result | Observed | Expectation |
+|---|---|:---:|---:|---|
+{check_rows}
+
+## Freshness monitoring
+
+| Signal | Value |
+|---|---:|
+| Threshold | {freshness.get('threshold_days', freshness.get('freshness_threshold_days', 'n/a'))} days |
+| Latest publication | {freshness.get('latest_published', 'n/a')} |
+| Oldest publication | {freshness.get('oldest_published', 'n/a')} |
+| Stale rows | {freshness.get('stale_rows', 'n/a')} / {freshness.get('total_rows', 'n/a')} |
+| Status | **{str(freshness.get('status', 'unknown')).upper()}** |
+
+## Reproducibility and artifacts
+
+The test set contains stable `ground_truth_doc_ids`; later phases reuse this exact file so metric deltas reflect corpus changes rather than evaluation-set drift. The raw API payload, normalized records, clean CSV/JSON, Chroma manifest, answer traces, metrics, validation results and this report are all persisted under `data/`.
+"""
     write_text(report_path, text)
 
 
@@ -89,44 +126,76 @@ def generate_corruption_report(
     repaired_quality: dict[str, Any],
     corrupted_freshness: dict[str, Any],
     repaired_freshness: dict[str, Any],
+    baseline_quality: dict[str, Any] | None = None,
+    baseline_freshness: dict[str, Any] | None = None,
 ) -> None:
-    """Write a markdown comparison report for baseline, corrupted, and repaired states."""
-    metric_keys = ["retrieval_hit_rate", "mean_token_f1", "judge_accuracy", "mean_judge_score"]
-    table = [
-        "| Metric | Baseline | Corrupted | Repaired | Corrupted delta | Repaired delta |",
-        "| --- | ---: | ---: | ---: | ---: | ---: |",
-    ]
-    for key in metric_keys:
-        table.append(
-            "| "
-            f"`{key}` | {_value(baseline_metrics, key)} | {_value(corrupted_metrics, key)} | "
-            f"{_value(repaired_metrics, key)} | {_delta(corrupted_metrics, baseline_metrics, key)} | "
-            f"{_delta(repaired_metrics, baseline_metrics, key)} |"
+    """Write a three-state comparison with explicit deltas and causal evidence."""
+    metric_names = ["retrieval_hit_rate", "mean_token_f1", "judge_accuracy", "mean_judge_score"]
+    rows: list[str] = []
+    for name in metric_names:
+        baseline = baseline_metrics.get(name)
+        corrupted = corrupted_metrics.get(name)
+        repaired = repaired_metrics.get(name)
+        corrupted_delta = float(corrupted) - float(baseline) if isinstance(baseline, (int, float)) and isinstance(corrupted, (int, float)) else None
+        repaired_delta = float(repaired) - float(corrupted) if isinstance(corrupted, (int, float)) and isinstance(repaired, (int, float)) else None
+        rows.append(
+            f"| `{name}` | {_metric(baseline)} | {_metric(corrupted)} | {_metric(repaired)} | "
+            f"{_metric(corrupted_delta)} | {_metric(repaired_delta)} |"
         )
 
-    text = "\n".join(
-        [
-            "# Corruption And Repair Report",
-            "",
-            "## Metric Comparison",
-            *table,
-            "",
-            "## Corrupted Quality",
-            *_quality_lines(corrupted_quality),
-            "",
-            "## Corrupted Freshness",
-            *_freshness_lines(corrupted_freshness),
-            "",
-            "## Repaired Quality",
-            *_quality_lines(repaired_quality),
-            "",
-            "## Repaired Freshness",
-            *_freshness_lines(repaired_freshness),
-            "",
-            "## Notes",
-            "- Conclusions should be checked against the answers and quality artifacts before demo.",
-            "- If judge fallback or Ragas errors occurred, treat those metrics as limited evidence.",
-            "",
-        ]
-    )
+    baseline_hit = float(baseline_metrics.get("retrieval_hit_rate", 0.0))
+    corrupted_hit = float(corrupted_metrics.get("retrieval_hit_rate", 0.0))
+    repaired_hit = float(repaired_metrics.get("retrieval_hit_rate", 0.0))
+    baseline_f1 = float(baseline_metrics.get("mean_token_f1", 0.0))
+    corrupted_f1 = float(corrupted_metrics.get("mean_token_f1", 0.0))
+    repaired_f1 = float(repaired_metrics.get("mean_token_f1", 0.0))
+    recovery = "confirmed" if repaired_hit >= baseline_hit - 0.01 and repaired_f1 >= baseline_f1 - 0.01 else "partial"
+    text = f"""# Corruption, Repair and RAG Impact Report
+
+Generated at `{datetime.now(UTC).isoformat()}`. All three states use the same persisted evaluation set.
+
+## Executive conclusion
+
+Corruption changed retrieval hit rate by **{corrupted_hit - baseline_hit:+.3f}** and token F1 by **{corrupted_f1 - baseline_f1:+.3f}**. Repair then changed them by **{repaired_hit - corrupted_hit:+.3f}** and **{repaired_f1 - corrupted_f1:+.3f}**, respectively. Recovery is **{recovery.upper()}** relative to baseline.
+
+## Metric comparison
+
+| Metric | Baseline | Corrupted | Repaired | Δ corrupt vs base | Δ repair vs corrupt |
+|---|---:|---:|---:|---:|---:|
+{chr(10).join(rows)}
+
+### Retrieval hit-rate visualization
+
+```text
+Baseline  {_bar(baseline_hit)} {_metric(baseline_hit)}
+Corrupted {_bar(corrupted_hit)} {_metric(corrupted_hit)}
+Repaired  {_bar(repaired_hit)} {_metric(repaired_hit)}
+```
+
+## Observability signals
+
+| Signal | Baseline | Corrupted | Repaired |
+|---|---:|---:|---:|
+| Quality checks | {_quality_summary(baseline_quality)} | {_quality_summary(corrupted_quality)} | {_quality_summary(repaired_quality)} |
+| Quality status | {_metric(baseline_quality.get('overall_success', baseline_quality.get('passed')) if baseline_quality else None)} | {_metric(corrupted_quality.get('overall_success', corrupted_quality.get('passed')))} | {_metric(repaired_quality.get('overall_success', repaired_quality.get('passed')))} |
+| Freshness status | {(baseline_freshness or {}).get('status', 'n/a')} | {corrupted_freshness.get('status', 'n/a')} | {repaired_freshness.get('status', 'n/a')} |
+| Stale rows | {(baseline_freshness or {}).get('stale_rows', 'n/a')} | {corrupted_freshness.get('stale_rows', 'n/a')} | {repaired_freshness.get('stale_rows', 'n/a')} |
+
+## Causal interpretation
+
+1. Dropped recent papers remove ground-truth document IDs from the index, directly lowering retrieval hit rate.
+2. Blank/noisy summaries and truncated titles weaken semantic evidence and factual extraction, lowering token F1 and judge results.
+3. Stale dates and duplicate IDs are independently detected by freshness, validity and uniqueness checks before relying only on end-user failures.
+4. Repair rebuilds the clean dataset from the immutable normalized raw snapshot, then rebuilds a separate Chroma collection. A return toward baseline metrics on the unchanged test set is evidence of recovery.
+
+## Reproduction
+
+```powershell
+.\.venv\Scripts\python.exe -m pipelines.phase1
+.\.venv\Scripts\python.exe -m pipelines.corruption_flow
+```
+
+See `data/results/corruption_log.json` for affected IDs and `data/results/comparison_metrics.json` for the machine-readable comparison.
+"""
     write_text(report_path, text)
+

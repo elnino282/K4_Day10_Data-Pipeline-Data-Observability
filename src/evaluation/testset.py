@@ -5,56 +5,14 @@ from typing import Any
 
 import pandas as pd
 
-from core.utils import first_sentence, normalize_whitespace, safe_slug, write_json
+from core.utils import first_sentence, normalize_whitespace, write_json
 
 
-REQUIRED_QUESTION_TYPES = ("summary", "authors", "date")
-OPTIONAL_QUESTION_TYPES = ("categories",)
-
-
-def _clean_text(value: Any) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, float) and pd.isna(value):
-        return ""
-    return normalize_whitespace(str(value))
-
-
-def _strip_quote(value: str) -> str:
-    return value.replace("'", "").strip()
-
-
-def _sample_id(question_type: str, paper_id: str) -> str:
-    return f"q-{question_type}-{safe_slug(paper_id)}"
-
-
-def _append_sample(
-    samples: list[dict[str, Any]],
-    *,
-    question_type: str,
-    paper_id: str,
-    question: str,
-    ground_truth: str,
-) -> None:
-    if not ground_truth:
-        return
-    samples.append(
-        {
-            "id": _sample_id(question_type, paper_id),
-            "question_type": question_type,
-            "question": question,
-            "ground_truth": ground_truth,
-            "ground_truth_doc_ids": [paper_id],
-        }
-    )
-
-
-def build_test_set(df: pd.DataFrame, output_path) -> list[dict[str, Any]]:
-    """Build a fixed evaluation set from the cleaned dataframe."""
+def build_test_set(df: pd.DataFrame, output_path: str | Path) -> list[dict[str, Any]]:
+    """Build a deterministic, multi-signal evaluation set from recent papers."""
     if df.empty:
-        raise ValueError("Cannot build a test set from an empty dataframe.")
-
-    required_columns = {
+        raise ValueError("Cannot build test set from empty dataframe.")
+    required = {
         "paper_id",
         "title",
         "summary",
@@ -62,83 +20,40 @@ def build_test_set(df: pd.DataFrame, output_path) -> list[dict[str, Any]]:
         "categories_joined",
         "published",
     }
-    missing_columns = sorted(required_columns - set(df.columns))
-    if missing_columns:
-        raise ValueError(f"Clean dataframe is missing required columns: {', '.join(missing_columns)}")
-
-    working = df.copy()
-    for column in required_columns:
-        working[column] = working[column].map(_clean_text)
-
-    valid_rows = working[
-        (working["paper_id"] != "")
-        & (working["title"] != "")
-        & (working["summary"].str.len() >= 80)
-        & (working["authors_joined"] != "")
-        & (working["published"] != "")
-    ].drop_duplicates(subset=["paper_id"])
-
-    if len(valid_rows) < 3:
-        raise ValueError("Need at least three valid cleaned papers to build a useful test set.")
+    missing = sorted(required - set(df.columns))
+    if missing:
+        raise ValueError(f"Cannot build test set; missing columns: {missing}")
+    if len(df) < 4:
+        raise ValueError("At least four clean documents are required to build a useful evaluation set.")
 
     samples: list[dict[str, Any]] = []
-    per_type_limit = 4
-
-    for _, row in valid_rows.head(8).iterrows():
-        paper_id = row["paper_id"]
-        title = row["title"]
-        quoted_title = _strip_quote(title)
-
-        if sum(item["question_type"] == "summary" for item in samples) < per_type_limit:
-            _append_sample(
-                samples,
-                question_type="summary",
-                paper_id=paper_id,
-                question=f"What is the main summary of '{quoted_title}'?",
-                ground_truth=first_sentence(row["summary"]),
+    # Recent rows are intentional: the corruption flow removes or damages the
+    # newest documents, making user-facing impact measurable on the same set.
+    selected = df.head(min(6, len(df)))
+    for position, (_, row) in enumerate(selected.iterrows(), start=1):
+        paper_id = str(row["paper_id"])
+        title = normalize_whitespace(str(row["title"]))
+        categories = normalize_whitespace(str(row.get("categories_joined", ""))) or str(row.get("primary_category", ""))
+        cases = [
+            (
+                "summary",
+                f"What is the main finding or topic of the paper '{title}'?",
+                first_sentence(str(row["summary"])),
+            ),
+            ("authors", f"Who authored the paper '{title}'?", str(row["authors_joined"]) or "Unknown"),
+            ("publication_date", f"When was the paper '{title}' published?", str(row["published"])),
+            ("categories", f"What categories describe the paper '{title}'?", categories),
+        ]
+        for question_type, question, ground_truth in cases:
+            samples.append(
+                {
+                    "id": f"q-{position:02d}-{question_type}",
+                    "question_type": question_type,
+                    "question": question,
+                    "ground_truth": normalize_whitespace(ground_truth),
+                    "ground_truth_doc_ids": [paper_id],
+                }
             )
-        if sum(item["question_type"] == "authors" for item in samples) < per_type_limit:
-            _append_sample(
-                samples,
-                question_type="authors",
-                paper_id=paper_id,
-                question=f"Who authored '{quoted_title}'?",
-                ground_truth=row["authors_joined"],
-            )
-        if sum(item["question_type"] == "date" for item in samples) < per_type_limit:
-            _append_sample(
-                samples,
-                question_type="date",
-                paper_id=paper_id,
-                question=f"When was '{quoted_title}' published?",
-                ground_truth=row["published"],
-            )
-        if (
-            sum(item["question_type"] == "categories" for item in samples) < per_type_limit
-            and row["categories_joined"]
-        ):
-            _append_sample(
-                samples,
-                question_type="categories",
-                paper_id=paper_id,
-                question=f"What categories are listed for '{quoted_title}'?",
-                ground_truth=row["categories_joined"],
-            )
-
-    if not samples:
-        raise ValueError("No valid evaluation samples could be created.")
-
-    ids = [item["id"] for item in samples]
-    if len(ids) != len(set(ids)):
-        raise ValueError("Generated test set contains duplicate ids.")
-
-    present_types = {item["question_type"] for item in samples}
-    missing_types = sorted(set(REQUIRED_QUESTION_TYPES) - present_types)
-    if missing_types:
-        raise ValueError(
-            "Clean dataframe cannot support all required question types; "
-            f"missing ground truth for: {', '.join(missing_types)}"
-        )
-
     write_json(Path(output_path), samples)
     return samples
+

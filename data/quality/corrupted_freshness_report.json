@@ -1,0 +1,12 @@
+{
+  "threshold_days": 180,
+  "latest_published": "2026-07-13",
+  "oldest_published": "2021-07-02",
+  "stale_rows": 2,
+  "fresh_rows": 22,
+  "total_rows": 24,
+  "stale_ratio": 0.0833,
+  "invalid_date_rows": 0,
+  "is_fresh": false,
+  "status": "stale_or_invalid"
+}

@@ -1,0 +1,17 @@
+{
+  "source": "Crossref REST API",
+  "endpoint": "https://api.crossref.org/works",
+  "fetched_at_utc": "2026-08-06T08:11:57.767481+00:00",
+  "request": {
+    "query": "agentic retrieval augmented generation large language model",
+    "filter": "from-pub-date:2026-02-07,has-abstract:true",
+    "rows": 24
+  },
+  "http_status": 200,
+  "api_items": 24,
+  "usable_records": 24,
+  "artifacts": {
+    "raw_response": "D:\\VinUni\\K4_Day10_Data-Pipeline-Data-Observability\\data\\raw\\crossref_response.json",
+    "raw_records": "D:\\VinUni\\K4_Day10_Data-Pipeline-Data-Observability\\data\\raw\\crossref_records.json"
+  }
+}

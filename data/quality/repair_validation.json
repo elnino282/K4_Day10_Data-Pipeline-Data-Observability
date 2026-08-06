@@ -1,0 +1,9 @@
+{
+  "baseline_rows": 24,
+  "repaired_rows": 24,
+  "baseline_unique_ids": 24,
+  "repaired_unique_ids": 24,
+  "missing_after_repair": [],
+  "unexpected_after_repair": [],
+  "document_identity_restored": true
+}

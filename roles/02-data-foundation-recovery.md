@@ -22,45 +22,52 @@ Không ghi secret. Không sửa tay dữ liệu corrupted và không copy baseli
 
 ## Kế hoạch phối hợp
 
-### 00:00–00:30 — Chốt nguồn/model
-- [x] Xác minh endpoint/query/filter Crossref với Vai trò 1.
-- [x] Chốt mapping payload sang `PaperRecord`, quy tắc `paper_id`, run date, sort và deduplicate.
+### 00:00–00:30 — Chốt nguồn
+- [ ] Xác minh endpoint/query/filter Crossref với Vai trò 1.
+- [ ] Chốt mapping payload sang `PaperRecord`, quy tắc `paper_id`, run date, sort và deduplicate.
+- [ ] Fetch/load Crossref trong `src/ingestion/crossref.py`; lưu raw HTTP response và `PaperRecord` snapshot vào `data/raw/crossref_response.json` và `data/raw/crossref_records.json`, kèm provenance nguồn/query/filter.
+- [ ] Dùng retry/backoff có giới hạn cho lỗi tạm thời (đặc biệt 429/503), log lỗi cuối không kèm credential.
+- [ ] Gate raw pass: hai artifact raw tồn tại, parse được, có `paper_id` ổn định và provenance đủ để tái lập; nếu fail, dừng cleaning và trả endpoint/path/row expected-vs-actual cùng command tái hiện cho Vai trò 1.
 
-### 00:30–01:05 — Fetch/load và snapshot
-- [x] Fetch/load Crossref trong `src/ingestion/crossref.py`; lưu raw HTTP payload và `PaperRecord` snapshot.
-- [x] Dùng retry/backoff có giới hạn cho lỗi tạm thời (đặc biệt 429/503), log lỗi cuối không kèm credential.
-
-### 01:05–01:35 — Cleaning truy vết
+### 00:30–01:05 — Cleaning truy vết
+- [ ] Nhận `data/raw/crossref_records.json` đã pass raw gate làm input cleaning; không fetch/load nguồn sống ở checkpoint này.
 - [ ] Chuẩn hóa và ghi/return record vào, record loại, lý do loại, rule normalize, duplicate key.
 - [ ] Tạo clean contract deterministically; xuất CSV/JSON cùng schema và cùng tập `paper_id`.
+- [ ] Gate clean/data model/quality: kiểm tra `paper_id` không null/unique, `text_for_embedding` không rỗng, `age_days` tính được, và CSV/JSON cùng schema/row count trước handoff.
 
-### 01:35–02:00 — Handoff/baseline freeze
-- [ ] Gửi schema, row count, tập/hash `paper_id`, run date và path baseline clean.
-- [ ] Freeze baseline từ một raw snapshot xác định trước khi build index/evaluation; chỉ refresh khi được chốt rõ ràng.
+### 01:05–01:35 — Handoff test set và index
+- [ ] Gửi schema, row count, tập/hash `paper_id`, run date và path baseline clean cho Vai trò 3 (RAG/index) và Vai trò 4 (test set, quality/freshness).
+- [ ] Nhận lại từ Vai trò 3 xác nhận field index; nhận từ Vai trò 4 xác nhận field test set/quality và giữ cùng baseline snapshot.
 
-### 02:00–02:15 — Corruption
+### 01:35–02:00 — Tích hợp baseline
+- [ ] Phối hợp Vai trò 1 tích hợp baseline flow: raw → clean → index → test set → evaluation → quality/freshness → report.
+- [ ] Xác minh baseline clean đã được Vai trò 3 và Vai trò 4 accept trước release/integration; chỉ refresh khi được chốt rõ ràng.
+
+### 02:00–02:15 — Nghỉ và freeze baseline
+- [ ] Freeze raw snapshot, baseline clean, test set và thông tin provenance; không refresh source hay đổi clean contract.
+- [ ] Ghi blocker còn lại rồi nghỉ theo mốc; mọi thay đổi sau freeze phải được Vai trò 1 điều phối và consumer accept lại.
+
+### 02:15–03:15 — Corruption có kiểm soát
 - [ ] Chốt seed, loại corruption, tỷ lệ/target và format `corruption_log.json` với Vai trò 1.
-- [ ] Bảo đảm mutation deterministic, logged và baseline nguyên vẹn.
+- [ ] Tạo corrupted artifact theo rule deterministic/logged đã chốt, không sửa tay file corrupted và giữ baseline nguyên vẹn.
 
-### 02:15–03:15 — Recovery
-- [ ] Tạo corrupted artifact theo rule đã chốt, không sửa tay file corrupted.
+### 03:15–04:00 — Recovery, release và demo
 - [ ] Reload `data/raw/crossref_records.json` và rerun cleaning với cùng rule/run date để tạo repaired artifact riêng.
 - [ ] Đối chiếu repaired/baseline: schema, row count, tập `paper_id`, nội dung canonical và cùng test set; metric recovery một mình không đủ.
-
-### 03:15–04:00 — Release
-- [ ] Bàn giao path artifact, provenance snapshot, rule/seed corruption và kết quả đối chiếu.
-- [ ] Chỉ sẵn sàng demo/release sau verification và consumer accept đúng contract.
+- [ ] Bàn giao path artifact, provenance snapshot, rule/seed corruption và kết quả đối chiếu cho Vai trò 1; chỉ sẵn sàng demo/release sau verification và consumer accept đúng contract.
 
 ## Handoff hai chiều
 
+Mọi reject handoff phải ghi field/path/row expected so với actual và command tái hiện trước khi dừng hoặc trả về owner.
+
 | Luồng | Producer → Consumer | Artifact/contract | Accept | Blocker behavior |
 | --- | --- | --- | --- | --- |
-| Baseline | Vai trò 2 → Vai trò 1 | Raw snapshot, baseline CSV/JSON, clean contract | Vai trò 1 trả lời đúng schema, row count, tập `paper_id`, run date, path | Dừng build/rebuild index; sửa nguồn/cleaning rồi phát hành snapshot mới có provenance |
-| Corruption/recovery | Vai trò 1 → Vai trò 2 | Seed, mutation plan, yêu cầu rebuild `corruption_flow.py` | Vai trò 2 trả lời đúng seed, target, log fields, artifact cần tạo | Dừng mutation; không tự suy đoán rule |
-| Clean data | Vai trò 2 → Vai trò 3 | Ba trạng thái clean, raw provenance, corruption log | Vai trò 3 trả lời đúng schema, row count, tập `paper_id`, snapshot/path | Dừng quality/freshness với artifact mơ hồ; trả mismatch về Vai trò 2 |
-| Quality finding | Vai trò 3 → Vai trò 2 | Báo cáo schema/freshness/quality và record lỗi | Vai trò 2 trả lời đúng artifact, rule tái lập, recovery source | Dừng release; reload raw snapshot/rerun cleaning, không vá tay |
-| Demo data | Vai trò 2 → Vai trò 4 | Clean contract, baseline freeze, provenance, recovery criteria | Vai trò 4 trả lời đúng schema, row count, `paper_id`, canonical check, cùng test set | Dừng demo/release phụ thuộc; Vai trò 4 không đổi data để demo pass |
-| Release finding | Vai trò 4 → Vai trò 2 | Nhu cầu demo/release, sai lệch artifact, acceptance result | Vai trò 2 trả lời đúng snapshot, run date, corruption log, trạng thái re-clean | Dừng handoff; tái tạo từ raw và yêu cầu accept lại |
+| Baseline | Vai trò 2 → Vai trò 1 | Raw snapshot, baseline CSV/JSON, clean contract | Vai trò 1 trả lời đúng schema, row count, tập `paper_id`, run date, path | Dừng integration/rebuild; ghi field/path/row expected-vs-actual và command tái hiện, rồi trả Vai trò 2 sửa nguồn/cleaning |
+| Corruption/recovery | Vai trò 1 → Vai trò 2 | Seed, mutation plan, yêu cầu rebuild `corruption_flow.py` | Vai trò 2 trả lời đúng seed, target, log fields, artifact cần tạo | Dừng mutation; ghi field/path/row expected-vs-actual và command tái hiện, không tự suy đoán rule |
+| Clean data cho RAG/index | Vai trò 2 → Vai trò 3 | Ba trạng thái clean, raw provenance, corruption log | Vai trò 3 trả lời đúng schema, row count, tập `paper_id`, snapshot/path và field index | Dừng build index; ghi field/path/row expected-vs-actual và command tái hiện, rồi trả mismatch về Vai trò 2 |
+| Quality/freshness finding | Vai trò 4 → Vai trò 2 | Báo cáo schema/freshness/quality và record lỗi | Vai trò 2 trả lời đúng artifact, rule tái lập, recovery source | Dừng release artifact đó; ghi field/path/row expected-vs-actual và command tái hiện, rồi reload raw/rerun cleaning, không vá tay |
+| Clean data cho evaluation/observability | Vai trò 2 → Vai trò 4 | Clean contract, baseline freeze, provenance, recovery criteria | Vai trò 4 trả lời đúng schema, row count, `paper_id`, canonical check, cùng test set | Dừng evaluation/quality/freshness phụ thuộc; ghi field/path/row expected-vs-actual và command tái hiện; Vai trò 4 không đổi data để pass |
+| Release finding | Vai trò 4 → Vai trò 2 | Sai lệch quality/freshness hoặc acceptance result cần sửa dữ liệu | Vai trò 2 trả lời đúng snapshot, run date, corruption log, trạng thái re-clean | Dừng handoff; ghi field/path/row expected-vs-actual và command tái hiện, tái tạo từ raw rồi yêu cầu accept lại |
 
 ## Tiêu chí recovery
 
@@ -75,7 +82,7 @@ Repaired chỉ accept nếu schema, row count, tập `paper_id`, nội dung cano
 | Thiếu record | Vai trò 2 | Required fields, row count, tập `paper_id` thiếu | Rerun fetch/load hoặc reload snapshot; log lý do loại |
 | Corruption không deterministic | Vai trò 1 + Vai trò 2 | Cùng seed cho artifact/log khác | Chặn đánh giá; cố định seed, input order, mutation log |
 | Duplicate lookup | Vai trò 2 | `paper_id` trùng/nhiều record map DOI | Deduplicate theo rule chốt và handoff lại |
-| Freshness overwrite | Vai trò 2 + Vai trò 3 | Raw/baseline bị ghi đè khi refresh | Không ghi đè snapshot freeze; version hóa provenance |
+| Freshness overwrite | Vai trò 2 + Vai trò 4 | Raw/baseline bị ghi đè khi refresh | Không ghi đè snapshot freeze; version hóa provenance |
 
 ## Lệnh kiểm chứng PowerShell
 
@@ -84,8 +91,8 @@ Repaired chỉ accept nếu schema, row count, tập `paper_id`, nội dung cano
 rg -n "TODO\(student\)|NotImplementedError" src
 
 # Chạy hai pipeline sau khi các owner hoàn tất implementation.
-.\.venv\Scripts\python.exe -m pipelines.phase1
-.\.venv\Scripts\python.exe -m pipelines.corruption_flow
+uv run python script/run_phase1.py
+uv run python script/run_corruption_flow.py
 
 # Liệt kê artifact và đọc corruption log.
 Get-ChildItem -LiteralPath data\raw,data\clean,data\results -File |

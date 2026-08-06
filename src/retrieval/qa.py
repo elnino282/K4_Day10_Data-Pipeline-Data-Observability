@@ -25,7 +25,7 @@ def _extract_answer(question: str, top_result: SearchResult) -> str:
     if "when was" in lowered or "publication date" in lowered or "published on" in lowered:
         return metadata["published"]
     if "what categories" in lowered:
-        return metadata["categories_joined"]
+        return metadata["categories_joined"] or metadata.get("primary_category", "uncategorized")
     return first_sentence(metadata["summary"])
 
 

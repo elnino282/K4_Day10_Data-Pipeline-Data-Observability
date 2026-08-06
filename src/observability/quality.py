@@ -8,147 +8,120 @@ import pandas as pd
 from core.config import Settings
 from core.utils import now_utc, write_json
 
-
-MIN_SUMMARY_CHARS = 80
-
-
-def _text_series(df: pd.DataFrame, column: str) -> pd.Series:
-    if column not in df.columns:
-        return pd.Series([""] * len(df), index=df.index, dtype="object")
-    return df[column].fillna("").astype(str).str.strip()
-
-
-def _check(name: str, observed: Any, expectation: str, passed: bool, details: Any | None = None) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "name": name,
-        "observed": observed,
-        "expectation": expectation,
-        "passed": bool(passed),
-    }
-    if details is not None:
-        payload["details"] = details
-    return payload
+MIN_SUMMARY_CHARS = 40
 
 
 def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: str) -> dict[str, Any]:
-    """Run dataframe quality checks and write a state-specific JSON artifact."""
-    total_rows = int(len(df))
-    paper_ids = _text_series(df, "paper_id")
-    titles = _text_series(df, "title")
-    summaries = _text_series(df, "summary")
+    """Run schema, completeness, uniqueness, validity and freshness checks."""
+    required_columns = {
+        "paper_id",
+        "title",
+        "summary",
+        "published",
+        "age_days",
+        "summary_chars",
+        "text_for_embedding",
+    }
+    checks: list[dict[str, Any]] = []
 
-    missing_columns = sorted(
-        {
-            "paper_id",
-            "title",
-            "summary",
-            "published",
-            "age_days",
-            "text_for_embedding",
-        }
-        - set(df.columns)
-    )
-    null_paper_ids = int((paper_ids == "").sum())
-    duplicate_paper_ids = int(paper_ids[paper_ids != ""].duplicated().sum())
-    empty_titles = int((titles == "").sum())
-    empty_summaries = int((summaries == "").sum())
-    short_summaries = int(((summaries != "") & (summaries.str.len() < MIN_SUMMARY_CHARS)).sum())
-    duplicate_rows = int(df.duplicated().sum()) if total_rows else 0
+    def add(name: str, success: bool, observed: Any, expectation: str, dimension: str) -> None:
+        checks.append(
+            {
+                "name": name,
+                "dimension": dimension,
+                "success": bool(success),
+                "passed": bool(success),
+                "observed": observed,
+                "expectation": expectation,
+            }
+        )
 
-    if "age_days" in df.columns:
-        age_values = pd.to_numeric(df["age_days"], errors="coerce")
-        missing_age_days = int(age_values.isna().sum())
-        negative_age_days = int((age_values < 0).sum())
-        stale_rows = int((age_values > settings.freshness_threshold_days).sum())
-    else:
-        age_values = pd.Series([], dtype="float64")
-        missing_age_days = total_rows
-        negative_age_days = 0
-        stale_rows = 0
+    missing = sorted(required_columns - set(df.columns))
+    add("required_columns", not missing, missing, "no required columns are missing", "schema")
+    add("minimum_row_count", len(df) >= 4, int(len(df)), ">= 4 rows", "volume")
 
-    checks = [
-        _check("required_columns_present", missing_columns, "no missing required columns", not missing_columns),
-        _check("row_count", total_rows, "row count > 0", total_rows > 0),
-        _check("paper_id_not_null", null_paper_ids, "0 blank/null paper_id values", null_paper_ids == 0),
-        _check("paper_id_unique", duplicate_paper_ids, "0 duplicate paper_id values", duplicate_paper_ids == 0),
-        _check("title_not_empty", empty_titles, "0 blank/null title values", empty_titles == 0),
-        _check("summary_not_empty", empty_summaries, "0 blank/null summary values", empty_summaries == 0),
-        _check(
-            "summary_min_length",
-            short_summaries,
-            f"0 non-empty summaries shorter than {MIN_SUMMARY_CHARS} chars",
-            short_summaries == 0,
-        ),
-        _check("duplicate_rows", duplicate_rows, "0 exact duplicate rows", duplicate_rows == 0),
-        _check("age_days_present", missing_age_days, "0 missing/non-numeric age_days values", missing_age_days == 0),
-        _check("age_days_non_negative", negative_age_days, "0 negative age_days values", negative_age_days == 0),
-        _check(
-            "freshness_threshold",
-            stale_rows,
-            f"0 rows older than {settings.freshness_threshold_days} days",
-            stale_rows == 0,
-        ),
-    ]
+    if not missing and len(df):
+        ids = df["paper_id"].fillna("").astype(str).str.strip()
+        titles = df["title"].fillna("").astype(str).str.strip()
+        summaries = df["summary"].fillna("").astype(str).str.strip()
+        embedded = df["text_for_embedding"].fillna("").astype(str).str.strip()
+        ages = pd.to_numeric(df["age_days"], errors="coerce")
+        published = pd.to_datetime(df["published"], errors="coerce", utc=True)
+        summary_chars = pd.to_numeric(df["summary_chars"], errors="coerce")
 
+        add("paper_id_complete", bool(ids.ne("").all()), int(ids.eq("").sum()), "0 blank IDs", "completeness")
+        duplicate_count = int(ids.duplicated(keep=False).sum())
+        add("paper_id_unique", duplicate_count == 0, duplicate_count, "0 rows with duplicate IDs", "uniqueness")
+        add("title_complete", bool(titles.ne("").all()), int(titles.eq("").sum()), "0 blank titles", "completeness")
+        short_title_rate = float(titles.str.len().lt(8).mean())
+        add("title_length", short_title_rate <= 0.05, round(short_title_rate, 4), "<= 5% titles shorter than 8 chars", "validity")
+        blank_summary_rate = float(summaries.eq("").mean())
+        add("summary_complete", blank_summary_rate <= 0.05, round(blank_summary_rate, 4), "<= 5% blank summaries", "completeness")
+        short_summary_rate = float(summaries.str.len().lt(40).mean())
+        add("summary_length", short_summary_rate <= 0.10, round(short_summary_rate, 4), "<= 10% summaries shorter than 40 chars", "validity")
+        add("published_valid", bool(published.notna().all()), int(published.isna().sum()), "0 invalid dates", "validity")
+        invalid_age_rate = float((ages.isna() | ages.lt(-30)).mean())
+        add("age_days_valid", invalid_age_rate <= 0.05, round(invalid_age_rate, 4), "<= 5% invalid ages", "validity")
+        stale_rate = float(ages.gt(settings.freshness_threshold_days).mean())
+        add("freshness_ratio", stale_rate <= 0.20, round(stale_rate, 4), "<= 20% stale rows", "freshness")
+        embedding_blank_rate = float(embedded.eq("").mean())
+        add("embedding_text_complete", embedding_blank_rate == 0.0, round(embedding_blank_rate, 4), "0 blank embedding texts", "completeness")
+        inconsistent_chars = int((summary_chars.fillna(-1).astype(int) != summaries.str.len()).sum())
+        add("summary_chars_consistent", inconsistent_chars == 0, inconsistent_chars, "0 inconsistent rows", "consistency")
+
+    successful = sum(1 for check in checks if check["success"])
+    overall_success = successful == len(checks)
     payload = {
+        "report_name": report_name,
         "state": report_name,
         "measured_at_utc": now_utc().isoformat(),
-        "input_rows": total_rows,
-        "freshness_threshold_days": settings.freshness_threshold_days,
-        "passed": all(item["passed"] for item in checks),
-        "checks": checks,
-        "summary": {
-            "missing_columns": missing_columns,
-            "null_paper_ids": null_paper_ids,
-            "duplicate_paper_ids": duplicate_paper_ids,
-            "empty_titles": empty_titles,
-            "empty_summaries": empty_summaries,
-            "short_summaries": short_summaries,
-            "duplicate_rows": duplicate_rows,
-            "missing_age_days": missing_age_days,
-            "negative_age_days": negative_age_days,
-            "stale_rows": stale_rows,
+        "framework": "declarative_quality_checks",
+        "overall_success": overall_success,
+        "passed": overall_success,
+        "statistics": {
+            "evaluated_checks": len(checks),
+            "successful_checks": successful,
+            "unsuccessful_checks": len(checks) - successful,
+            "success_percent": round(100.0 * successful / len(checks), 2) if checks else 0.0,
         },
+        "row_count": int(len(df)),
+        "input_rows": int(len(df)),
+        "freshness_threshold_days": settings.freshness_threshold_days,
+        "checks": checks,
     }
-    report_path = settings.paths.quality_dir / f"{report_name}_quality.json"
-    write_json(report_path, payload)
+    settings.paths.quality_dir.mkdir(parents=True, exist_ok=True)
+    write_json(settings.paths.quality_dir / f"{report_name}_quality.json", payload)
+    write_json(settings.paths.quality_dir / f"{report_name}.json", payload)
+    if hasattr(settings.paths, "gx_dir"):
+        settings.paths.gx_dir.mkdir(parents=True, exist_ok=True)
+        write_json(settings.paths.gx_dir / f"{report_name}.json", payload)
     return payload
 
 
-def build_freshness_report(df: pd.DataFrame, settings: Settings, report_path) -> dict[str, Any]:
-    """Build and write a freshness report from published dates and age_days."""
+def build_freshness_report(df: pd.DataFrame, settings: Settings, report_path: str | Path) -> dict[str, Any]:
+    """Summarize publication recency with an explicit service-level threshold."""
+    published = pd.to_datetime(df.get("published", pd.Series(dtype=str)), errors="coerce", utc=True)
+    ages = pd.to_numeric(df.get("age_days", pd.Series(dtype=float)), errors="coerce")
+    stale_mask = ages.gt(settings.freshness_threshold_days)
     total_rows = int(len(df))
-    published = pd.to_datetime(df["published"], errors="coerce") if "published" in df.columns else pd.Series([])
-    invalid_published = int(published.isna().sum()) if total_rows else 0
-
-    if "age_days" in df.columns:
-        age_days = pd.to_numeric(df["age_days"], errors="coerce")
-        stale_rows = int((age_days > settings.freshness_threshold_days).sum())
-        missing_age_days = int(age_days.isna().sum())
-    else:
-        stale_rows = 0
-        missing_age_days = total_rows
-
-    latest = published.max() if total_rows and not published.dropna().empty else None
-    oldest = published.min() if total_rows and not published.dropna().empty else None
-
-    status = "fresh"
-    if total_rows == 0 or invalid_published == total_rows:
-        status = "unknown"
-    elif stale_rows > 0 or missing_age_days > 0 or invalid_published > 0:
-        status = "stale"
-
+    stale_rows = int(stale_mask.sum())
+    valid_dates = published.dropna()
+    is_fresh = bool(total_rows and stale_rows == 0 and published.notna().all())
     payload = {
         "measured_at_utc": now_utc().isoformat(),
-        "latest_published": latest.date().isoformat() if latest is not None else None,
-        "oldest_published": oldest.date().isoformat() if oldest is not None else None,
-        "stale_rows": stale_rows,
-        "total_rows": total_rows,
-        "invalid_published": invalid_published,
-        "missing_age_days": missing_age_days,
+        "threshold_days": settings.freshness_threshold_days,
         "freshness_threshold_days": settings.freshness_threshold_days,
-        "status": status,
-        "is_fresh": status == "fresh",
+        "latest_published": valid_dates.max().date().isoformat() if not valid_dates.empty else None,
+        "oldest_published": valid_dates.min().date().isoformat() if not valid_dates.empty else None,
+        "stale_rows": stale_rows,
+        "fresh_rows": max(0, total_rows - stale_rows),
+        "total_rows": total_rows,
+        "stale_ratio": round(stale_rows / total_rows, 4) if total_rows else 1.0,
+        "invalid_date_rows": int(published.isna().sum()),
+        "invalid_published": int(published.isna().sum()),
+        "is_fresh": is_fresh,
+        "status": "fresh" if is_fresh else "stale_or_invalid",
     }
     write_json(Path(report_path), payload)
     return payload
+

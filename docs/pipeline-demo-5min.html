@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PaperLens — Pipeline & kịch bản demo 5 phút</title>
+  <style>
+    :root {
+      --ink:#152521; --muted:#63736d; --line:#d9e4df; --paper:#fff;
+      --canvas:#f3f6f3; --nav:#10211e; --green:#16845e; --mint:#9be5c6;
+      --blue:#5579e7; --red:#d65b5b; --purple:#755ebd; --amber:#d99637;
+      --shadow:0 15px 45px rgba(22,49,40,.08);
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:var(--canvas); font:14px/1.55 "Segoe UI",Arial,sans-serif; }
+    header { padding:38px clamp(24px,5vw,76px); color:#eefaf5; background:var(--nav); }
+    header h1 { max-width:1000px; margin:8px 0 10px; font:600 clamp(30px,4vw,54px)/1.05 Georgia,serif; }
+    header p { max-width:860px; margin:0; color:#a9beb6; font-size:16px; }
+    .eyebrow { color:var(--mint); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    .badges { margin-top:22px; display:flex; flex-wrap:wrap; gap:8px; }
+    .badge { padding:6px 10px; border:1px solid #345048; border-radius:20px; color:#d9e9e3; font-size:11px; }
+    nav { position:sticky; top:0; z-index:10; padding:10px clamp(24px,5vw,76px); display:flex; gap:8px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.94); backdrop-filter:blur(10px); }
+    nav a { padding:6px 10px; border-radius:7px; color:var(--muted); font-size:12px; font-weight:650; text-decoration:none; }
+    nav a:hover { color:var(--green); background:#eaf5f0; }
+    main { max-width:1500px; margin:auto; padding:32px clamp(18px,4vw,58px) 70px; }
+    section { margin-bottom:34px; }
+    .section-head { margin-bottom:17px; display:flex; align-items:end; justify-content:space-between; gap:20px; }
+    h2 { margin:4px 0 0; font:600 30px/1.1 Georgia,serif; }
+    h3 { margin:0 0 7px; font-size:14px; }
+    .section-head p { max-width:650px; margin:0; color:var(--muted); }
+    .panel { padding:22px; border:1px solid var(--line); border-radius:15px; background:var(--paper); box-shadow:var(--shadow); }
+    .flow { overflow-x:auto; }
+    .flow-row { min-width:1080px; display:grid; grid-template-columns:1fr 34px 1fr 34px 1fr 34px 1fr 34px 1fr; align-items:stretch; }
+    .node { position:relative; min-height:145px; padding:15px; border:1px solid var(--line); border-top:4px solid var(--green); border-radius:11px; background:#fbfdfc; }
+    .node.blue { border-top-color:var(--blue); }.node.red { border-top-color:var(--red); }.node.purple { border-top-color:var(--purple); }.node.amber { border-top-color:var(--amber); }
+    .node .step { color:var(--muted); font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .node strong { margin:6px 0; display:block; font-size:14px; }
+    .node p { margin:0; color:var(--muted); font-size:11px; }
+    .node code { margin-top:10px; display:block; color:#42534d; font-size:9px; overflow-wrap:anywhere; }
+    .arrow { display:grid; place-items:center; color:#80918b; font-size:26px; }
+    .gate { margin:18px 0; padding:13px 16px; display:flex; align-items:center; gap:12px; border:1px dashed #a9c8bb; border-radius:10px; color:#325247; background:#f0f8f4; }
+    .gate b { color:var(--green); }
+    .experiment { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .state { overflow:hidden; border:1px solid var(--line); border-radius:13px; background:#fff; }
+    .state header { padding:16px 18px; background:#f6f9f7; color:var(--ink); }
+    .state header span { font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .state.baseline header { border-left:5px solid var(--blue); }.state.corrupted header { border-left:5px solid var(--red); }.state.repaired header { border-left:5px solid var(--purple); }
+    .state header h3 { margin:3px 0 0; font-size:17px; }
+    .state-body { padding:17px; }
+    .state-body ol { margin:0; padding-left:18px; color:var(--muted); font-size:11px; }
+    .artifact { margin-top:13px; padding:9px; border-radius:7px; background:#f4f6f5; color:#52625c; font:9px/1.5 Consolas,monospace; }
+    .proof { margin-top:16px; display:grid; grid-template-columns:1fr 36px 1fr 36px 1fr 36px 1fr; align-items:center; }
+    .proof-card { min-height:105px; padding:13px; border-radius:10px; background:#f6f8f7; }
+    .proof-card b { display:block; margin-bottom:5px; }
+    .proof-card p { margin:0; color:var(--muted); font-size:10px; }
+    .metrics { width:100%; border-collapse:collapse; overflow:hidden; border-radius:10px; }
+    .metrics th,.metrics td { padding:11px 13px; border-bottom:1px solid #e7ece9; text-align:right; }
+    .metrics th:first-child,.metrics td:first-child { text-align:left; }
+    .metrics thead { color:var(--muted); background:#f4f7f5; font-size:10px; text-transform:uppercase; }
+    .metrics .bad { color:#ad3e3e; font-weight:750; }.metrics .good { color:var(--green); font-weight:750; }
+    .cause-grid { margin-top:16px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .cause { padding:14px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    .cause span { width:25px; height:25px; display:grid; place-items:center; border-radius:50%; color:#fff; background:var(--green); font-weight:800; }
+    .cause p { margin:8px 0 0; color:var(--muted); font-size:11px; }
+    .live-flow { display:grid; grid-template-columns:repeat(11,auto); align-items:center; justify-content:center; gap:9px; }
+    .live-flow div:not(.arrow) { padding:12px; border:1px solid var(--line); border-radius:9px; background:#fff; font-size:11px; font-weight:700; text-align:center; }
+    .warning { margin-top:14px; padding:12px 14px; border-left:4px solid var(--amber); background:#fff8ec; color:#765722; font-size:11px; }
+    .timeline { display:grid; gap:10px; }
+    .slot { display:grid; grid-template-columns:105px 165px 1fr 1.2fr; border:1px solid var(--line); border-radius:11px; overflow:hidden; background:#fff; }
+    .slot > div { padding:13px 15px; border-right:1px solid var(--line); }
+    .slot > div:last-child { border:0; }
+    .time { color:#fff; background:var(--nav); font-weight:800; }
+    .action { color:var(--green); font-weight:750; }
+    .say { color:#3d4d47; font-size:12px; }
+    .evidence { color:var(--muted); font-size:10px; }
+    .closing { padding:20px; border-radius:13px; color:#ecfff7; background:var(--nav); text-align:center; }
+    .closing strong { display:block; font:600 22px/1.35 Georgia,serif; }
+    .checklist { display:grid; grid-template-columns:repeat(2,1fr); gap:9px 24px; }
+    .checklist label { padding:9px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:11px; }
+    .checklist input { margin-right:8px; accent-color:var(--green); }
+    footer { padding:22px; color:#82938d; background:var(--nav); text-align:center; font-size:10px; }
+    @media (max-width:900px) { .experiment,.cause-grid { grid-template-columns:1fr; }.proof { overflow-x:auto; min-width:850px; }.slot { grid-template-columns:85px 130px 1fr; }.slot .evidence { grid-column:1/-1; border-top:1px solid var(--line); }.live-flow { justify-content:start; overflow-x:auto; }.section-head { align-items:start; flex-direction:column; } }
+    @media print { nav { display:none; } body { background:#fff; }.panel,.state { box-shadow:none; } section { break-inside:avoid; } header { padding:24px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">K4 · Day 10 · Data Pipeline & Observability</div>
+    <h1>PaperLens: từ Crossref đến bằng chứng AI suy giảm và phục hồi</h1>
+    <p>Sơ đồ kỹ thuật, chuỗi bằng chứng nhân quả và kịch bản demo 5 phút. Trọng tâm không phải “chatbot chạy được”, mà là đo được tác động của lỗi dữ liệu và chứng minh repair có hiệu quả.</p>
+    <div class="badges"><span class="badge">24 bài báo</span><span class="badge">24 câu hỏi golden</span><span class="badge">text-embedding-3-small</span><span class="badge">Chroma · cosine · top_k=4</span><span class="badge">Gemini generation</span><span class="badge">Không có reranker</span></div>
+  </header>
+  <nav><a href="#phase1">Phase 1</a><a href="#experiment">Thí nghiệm 3 trạng thái</a><a href="#evidence">Bằng chứng</a><a href="#live">Live RAG</a><a href="#script">Kịch bản 5 phút</a><a href="#checklist">Checklist</a></nav>
+
+  <main>
+    <section id="phase1">
+      <div class="section-head"><div><div class="eyebrow">01 · Baseline pipeline</div><h2>Phase 1 tạo mốc sạch</h2></div><p>Mọi artifact đều được lưu để có thể tái hiện, đối chiếu và truy ngược một câu trả lời về đúng dữ liệu nguồn.</p></div>
+      <div class="panel flow">
+        <div class="flow-row">
+          <article class="node blue"><span class="step">Nguồn</span><strong>Crossref API</strong><p>Query scholarly metadata có abstract. Retry/backoff và polite request.</p><code>src/ingestion/crossref.py</code></article><div class="arrow">→</div>
+          <article class="node"><span class="step">Raw</span><strong>Snapshot bất biến</strong><p>Lưu response, 24 records, request metadata và SHA để khóa lineage.</p><code>data/raw/crossref_*.json</code></article><div class="arrow">→</div>
+          <article class="node"><span class="step">Clean</span><strong>Chuẩn hóa schema</strong><p>Title, authors, abstract, DOI, ngày, category và text_for_embedding.</p><code>data/clean/papers_clean.json</code></article><div class="arrow">→</div>
+          <article class="node amber"><span class="step">Index</span><strong>Embedding + Chroma</strong><p>OpenAI embedding; collection baseline riêng; cosine retrieval top 4.</p><code>papers-baseline</code></article><div class="arrow">→</div>
+          <article class="node purple"><span class="step">Evaluate</span><strong>Golden test + report</strong><p>24 câu hỏi cố định; retrieval hit, token F1 và LLM judge.</p><code>baseline_metrics.json</code></article>
+        </div>
+        <div class="gate"><b>Quality gate trước index</b><span>13 checks: schema, volume, completeness, uniqueness, validity, freshness, consistency và embedding text.</span></div>
+      </div>
+    </section>
+
+    <section id="experiment">
+      <div class="section-head"><div><div class="eyebrow">02 · Controlled experiment</div><h2>Ba trạng thái, cùng điều kiện đánh giá</h2></div><p>Test set, embedding model, top_k và evaluator phải giữ nguyên. Chỉ dữ liệu thay đổi, nhờ vậy mới quy được suy giảm cho data corruption.</p></div>
+      <div class="experiment">
+        <article class="state baseline"><header><span>State A</span><h3>Mốc sạch — Baseline</h3></header><div class="state-body"><ol><li>Clean từ raw lần đầu.</li><li>Quality/freshness đều đạt.</li><li>Build <b>papers-baseline</b>.</li><li>Chạy fixed evaluation set.</li></ol><div class="artifact">papers_clean.json<br>papers_embeddings.json<br>baseline_answers.json<br>baseline_metrics.json</div></div></article>
+        <article class="state corrupted"><header><span>State B</span><h3>Cố ý làm lỗi — Corrupted</h3></header><div class="state-body"><ol><li>Drop 2 records.</li><li>Blank 2 summaries; inject noise.</li><li>Truncate title; stale date.</li><li>Duplicate rows và ghi log.</li></ol><div class="artifact">papers_clean_corrupted.json<br>corruption_log.json<br>corrupted_quality.json<br>corrupted_metrics.json</div></div></article>
+        <article class="state repaired"><header><span>State C</span><h3>Sau phục hồi — Repaired</h3></header><div class="state-body"><ol><li>Đọc lại raw snapshot tin cậy.</li><li>Chạy lại cùng cleaning rules.</li><li>Build <b>papers-repaired</b>.</li><li>Evaluate lại, không copy baseline.</li></ol><div class="artifact">papers_clean_repaired.json<br>repair_validation.json<br>repaired_quality.json<br>repaired_metrics.json</div></div></article>
+      </div>
+      <div class="panel proof" aria-label="Chuỗi bằng chứng nhân quả">
+        <div class="proof-card"><b>1. Corruption có log</b><p>Biết rule nào đã tác động paper ID nào.</p></div><div class="arrow">→</div>
+        <div class="proof-card"><b>2. Data checks báo lỗi</b><p>Duplicate, blank summary và stale records.</p></div><div class="arrow">→</div>
+        <div class="proof-card"><b>3. AI metrics suy giảm</b><p>Retrieval miss kéo answer quality đi xuống.</p></div><div class="arrow">→</div>
+        <div class="proof-card"><b>4. Repair phục hồi</b><p>Identity, quality và metrics trở lại baseline.</p></div>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head"><div><div class="eyebrow">03 · Quantitative evidence</div><h2>Số liệu dùng để kết luận</h2></div><p>Corrupted vẫn có 24 rows nhưng chỉ còn 22 unique IDs do record bị drop được “che” bởi duplicate — minh họa vì sao row count một mình không đủ.</p></div>
+      <div class="panel">
+        <table class="metrics">
+          <thead><tr><th>Signal</th><th>Mốc sạch</th><th>Cố ý làm lỗi</th><th>Sau phục hồi</th><th>Kết luận</th></tr></thead>
+          <tbody>
+            <tr><td>Quality checks</td><td class="good">13/13</td><td class="bad">11/13</td><td class="good">13/13</td><td>Duplicate + blank summary được phát hiện</td></tr>
+            <tr><td>Fresh records</td><td class="good">24/24</td><td class="bad">22/24</td><td class="good">24/24</td><td>Hai ngày xuất bản bị làm stale</td></tr>
+            <tr><td>Retrieval hit rate</td><td class="good">100%</td><td class="bad">50%</td><td class="good">100%</td><td>Ground-truth document bị miss</td></tr>
+            <tr><td>Mean token F1</td><td class="good">1.000</td><td class="bad">0.491</td><td class="good">1.000</td><td>Nội dung trả lời suy giảm</td></tr>
+            <tr><td>Judge accuracy</td><td class="good">100%</td><td class="bad">45.83%</td><td class="good">100%</td><td>Đánh giá câu trả lời giảm mạnh</td></tr>
+            <tr><td>Mean judge score</td><td class="good">5.000</td><td class="bad">2.875</td><td class="good">5.000</td><td>Repair khôi phục hoàn toàn</td></tr>
+          </tbody>
+        </table>
+        <div class="cause-grid">
+          <div class="cause"><span>1</span><p><b>Biết hệ thống suy giảm:</b> dashboard so sánh quality, freshness, retrieval và answer metrics giữa ba state.</p></div>
+          <div class="cause"><span>2</span><p><b>Tìm nguyên nhân:</b> nối failed question → expected DOI → retrieved IDs → corruption log → failed quality check.</p></div>
+          <div class="cause"><span>3</span><p><b>Chứng minh sửa hiệu quả:</b> rebuild từ raw, chạy lại cùng test set/config và xác minh không thiếu/thừa ID.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="live">
+      <div class="section-head"><div><div class="eyebrow">04 · Online answer path</div><h2>Luồng chatbot trên UI</h2></div><p>Đây là lớp tương tác trực tiếp. Evidence chính thức vẫn là fixed evaluation artifacts, vì LLM live đôi khi có thể đoán đúng dù retrieval sai.</p></div>
+      <div class="panel">
+        <div class="live-flow"><div>Câu hỏi</div><div class="arrow">→</div><div>Embedding query</div><div class="arrow">→</div><div>Chroma cosine</div><div class="arrow">→</div><div>Top 4 chunks</div><div class="arrow">→</div><div>Gemini grounded answer</div><div class="arrow">→</div><div>Answer + citation</div></div>
+        <div class="warning"><b>Không có reranker.</b> Category, author, date hoặc metadata thiếu phải được trả đúng là thiếu/uncategorized; agent không được suy diễn từ title hay abstract.</div>
+      </div>
+    </section>
+
+    <section id="script">
+      <div class="section-head"><div><div class="eyebrow">05 · Presentation runbook</div><h2>Kịch bản demo đúng 5 phút</h2></div><p>Mỗi đoạn có thao tác, lời nói và bằng chứng cần chỉ trên màn hình. Ưu tiên số liệu; live chat chỉ là ví dụ cuối.</p></div>
+      <div class="timeline">
+        <article class="slot"><div class="time">0:00–0:30</div><div class="action">Nêu bài toán</div><div class="say">“Một chatbot RAG chạy được chưa đủ. Nhóm em cần biết khi dữ liệu lỗi thì AI suy giảm ở đâu, vì sao, và repair có thật sự đưa hệ thống trở lại hay không.”</div><div class="evidence">Đứng ở header UI hoặc sơ đồ này. Nhấn mạnh raw → clean → index → evaluate → report.</div></article>
+        <article class="slot"><div class="time">0:30–1:15</div><div class="action">Giới thiệu Phase 1</div><div class="say">“Crossref được snapshot thành 24 records, clean theo schema cố định, qua 13 quality checks, nhúng bằng text-embedding-3-small và index vào Chroma. Baseline là mốc sạch để so sánh.”</div><div class="evidence">Chỉ Phase 1 trên sơ đồ; nói rõ cosine top_k=4 và không có reranker.</div></article>
+        <article class="slot"><div class="time">1:15–2:00</div><div class="action">Cho xem baseline</div><div class="say">“Ở mốc sạch, 13/13 checks đạt, 24/24 records còn mới, retrieval hit 100% và judge score 5. Đây là mức chất lượng trước sự cố.”</div><div class="evidence">UI → Chất lượng & giám sát → chọn “Mốc sạch”. Mở Đánh giá nếu cần.</div></article>
+        <article class="slot"><div class="time">2:00–3:05</div><div class="action">Chuyển corrupted</div><div class="say">“Nhóm em tạo lỗi có kiểm soát và ghi rõ affected IDs: drop, blank summary, noise, title ngắn, stale date và duplicate. Dashboard phát hiện quality chỉ còn 11/13, freshness 22/24; retrieval hit giảm từ 100% xuống 50%, judge accuracy còn 45.83%.”</div><div class="evidence">Chọn “Cố ý làm lỗi”; chỉ chart so sánh. Mở corruption_log nếu giảng viên hỏi nguyên nhân cụ thể.</div></article>
+        <article class="slot"><div class="time">3:05–4:00</div><div class="action">Chứng minh repair</div><div class="say">“Repair không copy baseline. Pipeline đọc lại raw snapshot, chạy lại cleaning và build collection repaired riêng. 24 unique IDs được phục hồi, không thiếu hay thừa; quality, freshness và toàn bộ metrics quay về baseline.”</div><div class="evidence">Chọn “Sau phục hồi”; chỉ 13/13, 24/24, hit 100%, judge 5 và repair_validation.</div></article>
+        <article class="slot"><div class="time">4:00–4:40</div><div class="action">Live golden question</div><div class="say">Hỏi author hoặc ngày xuất bản của Hi-RAG/SafeRAG. Mở citation để thấy DOI, metadata và chunk retriever đã đưa cho LLM. Nếu hỏi category SafeRAG, đáp án phải đúng là “uncategorized”, không suy diễn.</div><div class="evidence">UI → Trợ lý nghiên cứu. Có sẵn câu hỏi dự phòng trong data/eval/test_set.json.</div></article>
+        <article class="slot"><div class="time">4:40–5:00</div><div class="action">Chốt thông điệp</div><div class="say">“Chuỗi bằng chứng của nhóm em là corruption artifact → quality/freshness signal → retrieval/answer degradation → repair validation → metric recovery. Vì vậy kết luận có thể kiểm tra và tái hiện, không dựa vào cảm giác chatbot trả lời hay.”</div><div class="evidence">Quay lại chart ba trạng thái và dừng ở bảng 100% → 50% → 100%.</div></article>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <div class="section-head"><div><div class="eyebrow">06 · Before presenting</div><h2>Checklist 60 giây trước demo</h2></div></div>
+      <div class="panel checklist">
+        <label><input type="checkbox">Chạy <code>python script/run_ui.py</code></label>
+        <label><input type="checkbox">Mở sẵn <code>http://127.0.0.1:4173</code></label>
+        <label><input type="checkbox">Kiểm tra ba state đều tải được</label>
+        <label><input type="checkbox">Mở sẵn corruption_log và repair_validation</label>
+        <label><input type="checkbox">Copy một golden question để dự phòng</label>
+        <label><input type="checkbox">Không chạy crawl Crossref trực tiếp khi demo</label>
+        <label><input type="checkbox">Không lộ .env hoặc API key trên màn hình</label>
+        <label><input type="checkbox">Nếu Gemini lỗi, dùng evaluation artifacts để kết luận</label>
+      </div>
+    </section>
+
+    <div class="closing"><strong>Data lỗi → tín hiệu quan sát được → AI suy giảm → repair từ nguồn tin cậy → chất lượng phục hồi.</strong><span>Đây là câu chuyện chính của lab.</span></div>
+  </main>
+  <footer>PaperLens · K4 Day 10 · Standalone pipeline diagram & 5-minute demo runbook</footer>
+</body>
+</html>

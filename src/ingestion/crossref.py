@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import date
 from html import unescape
-from pathlib import Path
+
 import os
+from pathlib import Path
 import re
 import time
 from typing import Any
@@ -11,17 +13,14 @@ from typing import Any
 import requests
 
 from core.config import Settings
-from core.utils import normalize_whitespace, read_json, write_json
+from core.utils import normalize_whitespace, now_utc, read_json, write_json
 
 CROSSREF_API_URL = "https://api.crossref.org/works"
-CROSSREF_SORT = "relevance"
-CROSSREF_ORDER = "desc"
-MARKUP_STRIP_PASSES = 3
 REQUEST_TIMEOUT_SECONDS = 30
-MAX_ATTEMPTS = 5
-BACKOFF_BASE_SECONDS = 1.0
-BACKOFF_CAP_SECONDS = 30.0
-RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+MAX_REQUEST_ATTEMPTS = 4
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+USER_AGENT = "Day10DataObservabilityLab/1.0 (educational data pipeline)"
+MARKUP_STRIP_PASSES = 3
 
 _TAG_PATTERN = re.compile(r"<[^>]+>")
 _ABSTRACT_LABEL_PATTERN = re.compile(r"^\s*abstract[:\s]*", flags=re.IGNORECASE)
@@ -42,6 +41,12 @@ class PaperRecord:
     comment: str
 
 
+def _first_text(value: Any) -> str:
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    return normalize_whitespace(str(value)) if value is not None else ""
+
+
 def _clean_text(value: Any) -> str:
     if not isinstance(value, str):
         return ""
@@ -49,8 +54,7 @@ def _clean_text(value: Any) -> str:
 
 
 def _strip_markup(value: Any) -> str:
-    """Bo JATS/XML markup. Crossref co the escape long nhau (`&lt;jats:p&gt;`),
-    nen phai lap strip-tag + unescape cho toi khi on dinh."""
+    """Strip JATS/XML markup. Crossref can contain nested escape tags."""
     if not isinstance(value, str):
         return ""
     text = value
@@ -63,225 +67,279 @@ def _strip_markup(value: Any) -> str:
 
 
 def _strip_jats(abstract: Any) -> str:
-    return _ABSTRACT_LABEL_PATTERN.sub("", _strip_markup(abstract))
+    text = _first_text(abstract) if not isinstance(abstract, str) else abstract
+    return _ABSTRACT_LABEL_PATTERN.sub("", _strip_markup(text))
 
 
-def _first_title(item: dict) -> str:
-    titles = item.get("title") or []
-    for title in titles:
-        cleaned = _strip_markup(title)
-        if cleaned:
-            return cleaned
+def _clean_markup_text(value: Any) -> str:
+    text = _first_text(value)
+    if not text:
+        return ""
+    return _strip_jats(text)
+
+
+def _request_metadata_path(settings: Settings) -> Path:
+    """Return the provenance path while tolerating lightweight test settings."""
+    configured_path = getattr(settings.paths, "raw_request_metadata", None)
+    if configured_path is not None:
+        return Path(configured_path)
+    return settings.paths.raw_api_response.with_name("crossref_request.json")
+
+
+def _date_from_parts(value: Any) -> str:
+    if not isinstance(value, dict):
+        return ""
+
+    date_time = value.get("date-time")
+    if isinstance(date_time, str) and date_time:
+        return date_time[:10]
+
+    parts = value.get("date-parts")
+    if not isinstance(parts, list) or not parts or not isinstance(parts[0], list) or not parts[0]:
+        return ""
+
+    try:
+        year = int(parts[0][0])
+        month = int(parts[0][1]) if len(parts[0]) > 1 else 1
+        day = int(parts[0][2]) if len(parts[0]) > 2 else 1
+        return date(year, month, day).isoformat()
+    except (TypeError, ValueError):
+        return ""
+
+
+def _first_available_date(item: dict[str, Any], keys: tuple[str, ...]) -> str:
+    for key in keys:
+        parsed = _date_from_parts(item.get(key))
+        if parsed:
+            return parsed
     return ""
 
 
-def _author_names(item: dict) -> list[str]:
-    names: list[str] = []
-    for author in item.get("author") or []:
+def _parse_authors(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+
+    authors: list[str] = []
+    for author in value:
         if not isinstance(author, dict):
             continue
-        given = _clean_text(author.get("given"))
-        family = _clean_text(author.get("family"))
-        full = _clean_text(author.get("name")) or " ".join(part for part in (given, family) if part)
-        if full:
-            names.append(full)
-    return names
+        name = _first_text(author.get("name"))
+        if not name:
+            name = normalize_whitespace(
+                " ".join(part for part in (_first_text(author.get("given")), _first_text(author.get("family"))) if part)
+            )
+        if name and name not in authors:
+            authors.append(name)
+    return authors
 
 
-def _categories(item: dict) -> list[str]:
-    seen: list[str] = []
-    for subject in item.get("subject") or []:
-        cleaned = _clean_text(subject)
-        if cleaned and cleaned not in seen:
-            seen.append(cleaned)
-    return seen
+def _parse_categories(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    categories: list[str] = []
+    for raw_category in value:
+        category = _first_text(raw_category)
+        if category and category not in categories:
+            categories.append(category)
+    return categories
 
 
-def _date_from_parts(node: Any) -> str:
-    if not isinstance(node, dict):
+def _find_pdf_url(item: dict[str, Any]) -> str:
+    links = item.get("link")
+    if not isinstance(links, list):
         return ""
-    parts = node.get("date-parts") or []
-    if not parts or not isinstance(parts[0], list) or not parts[0]:
-        return ""
-    values = [int(part) for part in parts[0] if isinstance(part, int)]
-    if not values:
-        return ""
-    year = values[0]
-    month = values[1] if len(values) > 1 else 1
-    day = values[2] if len(values) > 2 else 1
-    return f"{year:04d}-{month:02d}-{day:02d}"
-
-
-def _published_date(item: dict) -> str:
-    for key in ("published", "published-online", "published-print", "issued", "created"):
-        value = _date_from_parts(item.get(key))
-        if value:
-            return value
-    return ""
-
-
-def _updated_date(item: dict) -> str:
-    for key in ("deposited", "indexed"):
-        node = item.get(key)
-        if isinstance(node, dict):
-            stamp = _clean_text(node.get("date-time"))
-            if stamp:
-                return stamp[:10]
-            value = _date_from_parts(node)
-            if value:
-                return value
-    return _published_date(item)
-
-
-def _pdf_url(item: dict) -> str:
-    for link in item.get("link") or []:
+    for link in links:
         if not isinstance(link, dict):
             continue
-        if _clean_text(link.get("content-type")).lower() == "application/pdf":
-            url = _clean_text(link.get("URL"))
-            if url:
-                return url
-    return ""
-
-
-def _container_title(item: dict) -> str:
-    for title in item.get("container-title") or []:
-        cleaned = _clean_text(title)
-        if cleaned:
-            return cleaned
+        url = _first_text(link.get("URL"))
+        content_type = _first_text(link.get("content-type")).lower()
+        if url and (content_type == "application/pdf" or url.lower().endswith(".pdf")):
+            return url
     return ""
 
 
 def parse_crossref_payload(payload: dict) -> list[PaperRecord]:
-    """Parse Crossref payload thanh list `PaperRecord`.
+    """Parse a Crossref response into a stable raw-record contract.
 
-    Rule da chot (Vai tro 2 quyet dinh, Vai tro 1 uy quyen):
-    - `paper_id` = DOI lowercase, la khoa on dinh.
-    - Loai record thieu DOI, title hoac abstract.
-    - Title/summary bo sach JATS markup truoc khi luu.
-    - Deduplicate theo `paper_id`, giu ban dau tien.
-    - Sort tang dan theo `paper_id` de snapshot deterministic.
-
-    Raw snapshot giu nguyen record co `published` trong tuong lai (Crossref co
-    forthcoming date). Viec loai chung la rule cua cleaning, noi co `run_date`.
+    A usable record must have a DOI, title and abstract. Duplicate DOIs are
+    removed at the source boundary so ``paper_id`` remains stable downstream.
     """
-    items = ((payload or {}).get("message") or {}).get("items") or []
-    records: dict[str, PaperRecord] = {}
+    if not isinstance(payload, dict):
+        raise ValueError("Crossref payload must be a JSON object.")
+
+    message = payload.get("message")
+    items = message.get("items") if isinstance(message, dict) else None
+    if not isinstance(items, list):
+        raise ValueError("Crossref payload is missing message.items.")
+
+    records: list[PaperRecord] = []
+    seen_paper_ids: set[str] = set()
 
     for item in items:
         if not isinstance(item, dict):
             continue
 
-        paper_id = _clean_text(item.get("DOI")).lower()
-        title = _first_title(item)
-        summary = _strip_jats(item.get("abstract"))
-        if not paper_id or not title or not summary:
-            continue
-        if paper_id in records:
+        paper_id = _first_text(item.get("DOI")).lower()
+        title = _clean_markup_text(item.get("title"))
+        summary = _clean_markup_text(item.get("abstract"))
+        if not paper_id or not title or not summary or paper_id in seen_paper_ids:
             continue
 
-        categories = _categories(item)
-        work_type = _clean_text(item.get("type"))
-        abs_url = _clean_text(item.get("URL")) or f"https://doi.org/{paper_id}"
+        categories = _parse_categories(item.get("subject"))
+        abs_url = _first_text(item.get("URL"))
+        if not abs_url:
+            resource = item.get("resource")
+            primary = resource.get("primary") if isinstance(resource, dict) else None
+            abs_url = _first_text(primary.get("URL")) if isinstance(primary, dict) else f"https://doi.org/{paper_id}"
 
-        records[paper_id] = PaperRecord(
+        comment_parts = [
+            _first_text(item.get("publisher")),
+            _first_text(item.get("container-title")),
+        ]
+        comment = "; ".join(part for part in comment_parts if part) or _first_text(item.get("publisher"))
+
+        published = _first_available_date(
+            item,
+            ("published-print", "published-online", "published", "issued", "created"),
+        )
+        updated = _first_available_date(item, ("indexed", "deposited")) or published
+
+        record = PaperRecord(
             paper_id=paper_id,
             title=title,
             summary=summary,
-            authors=_author_names(item),
+            authors=_parse_authors(item.get("author")),
             categories=categories,
-            primary_category=categories[0] if categories else (work_type or "unknown"),
-            published=_published_date(item),
-            updated=_updated_date(item),
+            primary_category=categories[0] if categories else (_first_text(item.get("type")) or "unknown"),
+            published=published,
+            updated=updated,
             abs_url=abs_url,
-            pdf_url=_pdf_url(item),
-            comment=_container_title(item),
+            pdf_url=_find_pdf_url(item),
+            comment=comment,
         )
+        records.append(record)
+        seen_paper_ids.add(paper_id)
 
-    return [records[key] for key in sorted(records)]
-
-
-def _build_params(settings: Settings) -> dict[str, str | int]:
-    params: dict[str, str | int] = {
-        "query": settings.source_query,
-        "filter": settings.source_filter,
-        "rows": settings.max_results,
-        "sort": CROSSREF_SORT,
-        "order": CROSSREF_ORDER,
-    }
-    mailto = os.getenv("CROSSREF_MAILTO", "").strip()
-    if mailto:
-        params["mailto"] = mailto
-    return params
-
-
-def _retry_delay(attempt: int, response: requests.Response | None) -> float:
-    if response is not None:
-        retry_after = response.headers.get("Retry-After", "").strip()
-        if retry_after.isdigit():
-            return min(float(retry_after), BACKOFF_CAP_SECONDS)
-    return min(BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)), BACKOFF_CAP_SECONDS)
-
-
-def _get_with_retry(url: str, params: dict[str, str | int]) -> dict:
-    headers = {"User-Agent": "K4-Day10-Data-Pipeline/1.0 (Crossref REST API client)"}
-    last_error = ""
-
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        response: requests.Response | None = None
-        try:
-            response = requests.get(url, params=params, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS)
-            if response.status_code == 200:
-                return response.json()
-            last_error = f"HTTP {response.status_code}"
-            if response.status_code not in RETRY_STATUS_CODES:
-                raise RuntimeError(f"Crossref request failed with {last_error}.")
-        except requests.RequestException as error:
-            last_error = f"{type(error).__name__}: {error}"
-
-        if attempt == MAX_ATTEMPTS:
-            break
-        delay = _retry_delay(attempt, response)
-        print(f"[crossref] attempt {attempt}/{MAX_ATTEMPTS} failed ({last_error}); retry in {delay:.1f}s")
-        time.sleep(delay)
-
-    raise RuntimeError(f"Crossref request failed after {MAX_ATTEMPTS} attempts. Last error: {last_error}")
+    return records
 
 
 def fetch_source_records(settings: Settings) -> list[PaperRecord]:
-    """Goi Crossref, luu raw response va raw records snapshot."""
-    payload = _get_with_retry(CROSSREF_API_URL, _build_params(settings))
-    write_json(settings.paths.raw_api_response, payload)
+    """Fetch Crossref records, preserve the source snapshot, and parse it.
 
+    Transient HTTP and network failures are retried with exponential backoff.
+    The unmodified response is written before parsing so malformed upstream
+    data remains traceable.
+    """
+    params = {
+        "query": settings.source_query,
+        "filter": settings.source_filter,
+        "rows": settings.max_results,
+    }
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+
+    response: requests.Response | None = None
+    last_error: Exception | None = None
+    for attempt in range(MAX_REQUEST_ATTEMPTS):
+        try:
+            response = requests.get(
+                CROSSREF_API_URL,
+                params=params,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            )
+            if response.status_code not in RETRYABLE_STATUS_CODES:
+                response.raise_for_status()
+                break
+
+            if attempt == MAX_REQUEST_ATTEMPTS - 1:
+                response.raise_for_status()
+
+            retry_after = response.headers.get("Retry-After", "")
+            delay = float(retry_after) if retry_after.replace(".", "", 1).isdigit() else 2**attempt
+            time.sleep(delay)
+        except requests.HTTPError as exc:
+            last_error = exc
+            status_code = response.status_code if response is not None else None
+            if status_code not in RETRYABLE_STATUS_CODES:
+                raise RuntimeError(f"Crossref request failed with HTTP status {status_code}.") from exc
+            if attempt == MAX_REQUEST_ATTEMPTS - 1:
+                raise RuntimeError(
+                    f"Crossref request failed after {MAX_REQUEST_ATTEMPTS} attempts."
+                ) from exc
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt == MAX_REQUEST_ATTEMPTS - 1:
+                raise RuntimeError(
+                    f"Crossref request failed after {MAX_REQUEST_ATTEMPTS} attempts."
+                ) from exc
+            time.sleep(2**attempt)
+    else:
+        raise RuntimeError("Crossref request did not produce a response.") from last_error
+
+    if response is None:
+        raise RuntimeError("Crossref request did not produce a response.")
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise ValueError("Crossref returned a non-JSON response.") from exc
+
+    fetched_at = now_utc().isoformat()
+    write_json(settings.paths.raw_api_response, payload)
     records = parse_crossref_payload(payload)
     if not records:
-        raise RuntimeError("Crossref returned no usable record. Blocker: khong freeze baseline rong.")
-
+        raise ValueError("Crossref response contained no usable paper records.")
     write_json(settings.paths.raw_records_json, [asdict(record) for record in records])
+    message = payload.get("message") if isinstance(payload, dict) else None
+    api_items = message.get("items") if isinstance(message, dict) else None
+    write_json(
+        _request_metadata_path(settings),
+        {
+            "source": settings.source_api,
+            "endpoint": CROSSREF_API_URL,
+            "fetched_at_utc": fetched_at,
+            "request": params,
+            "http_status": response.status_code,
+            "api_items": len(api_items) if isinstance(api_items, list) else None,
+            "usable_records": len(records),
+            "artifacts": {
+                "raw_response": str(settings.paths.raw_api_response),
+                "raw_records": str(settings.paths.raw_records_json),
+            },
+        },
+    )
     return records
 
 
 def load_raw_records(path: Path) -> list[PaperRecord]:
-    """Doc JSON snapshot va map thanh `PaperRecord`. Day la nguon recovery duy nhat."""
-    rows = read_json(path)
-    if not isinstance(rows, list):
-        raise ValueError(f"Raw records snapshot must be a JSON list: {path}")
+    """Load a parsed JSON snapshot and restore the ``PaperRecord`` objects."""
+    if not path.exists():
+        raise FileNotFoundError(f"Raw records snapshot does not exist: {path}")
+
+    payload = read_json(path)
+    if not isinstance(payload, list):
+        raise ValueError(f"Raw records snapshot must contain a JSON list: {path}")
 
     records: list[PaperRecord] = []
-    for row in rows:
-        records.append(
-            PaperRecord(
-                paper_id=str(row["paper_id"]),
-                title=str(row["title"]),
-                summary=str(row["summary"]),
-                authors=list(row.get("authors") or []),
-                categories=list(row.get("categories") or []),
-                primary_category=str(row.get("primary_category") or ""),
-                published=str(row.get("published") or ""),
-                updated=str(row.get("updated") or ""),
-                abs_url=str(row.get("abs_url") or ""),
-                pdf_url=str(row.get("pdf_url") or ""),
-                comment=str(row.get("comment") or ""),
+    for index, item in enumerate(payload):
+        if not isinstance(item, dict):
+            raise ValueError(f"Raw record at index {index} is not a JSON object.")
+        required_fields = set(PaperRecord.__dataclass_fields__)
+        missing_fields = sorted(required_fields - set(item))
+        if missing_fields:
+            raise ValueError(
+                f"Raw record at index {index} has missing fields: "
+                f"{', '.join(missing_fields)}."
             )
-        )
+        try:
+            record = PaperRecord(**item)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Raw record at index {index} does not match PaperRecord schema.") from exc
+        if not isinstance(record.authors, list) or not isinstance(record.categories, list):
+            raise ValueError(f"Raw record at index {index} has invalid list fields.")
+        records.append(record)
+
+    if not records:
+        raise ValueError(f"Raw records snapshot is empty: {path}")
     return records
+

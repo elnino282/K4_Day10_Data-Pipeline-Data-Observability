@@ -5,6 +5,8 @@
 
 # Virtual environments
 .venv/
+.venv-*/
+.uv-cache/
 venv/
 env/
 ENV/
@@ -60,12 +62,13 @@ logs/
 *.temp
 .cache/
 
-# Local data and generated outputs
-data/raw/
+# Local/generated outputs that should not be versioned
 data/processed/
 output/
 outputs/
 artifacts/
+data/chroma/*
+!data/chroma/.gitkeep
 
 # Local databases
 *.db
@@ -87,3 +90,4 @@ logs/
 # Project-specific
 lab.txt
 lab/
+
