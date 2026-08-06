@@ -51,6 +51,10 @@ class SettingsContractTests(TestCase):
 
             self.assertEqual(settings.source_api, "https://api.crossref.org/works")
             self.assertEqual(
+                settings.paths.baseline_run_metadata.name,
+                "baseline_run.json",
+            )
+            self.assertEqual(
                 len(
                     {
                         settings.baseline_collection_name,

@@ -98,23 +98,31 @@ def _dataframe_records(df: pd.DataFrame) -> list[dict]:
     return json.loads(df.to_json(orient="records", date_format="iso"))
 
 
-def _validate_clean_artifacts(df: pd.DataFrame, csv_path, json_path) -> None:
-    require_file_artifact(csv_path, "baseline clean CSV")
-    json_records = require_json_artifact(json_path, "baseline clean JSON", list)
+def _validate_clean_artifacts(
+    df: pd.DataFrame,
+    csv_path,
+    json_path,
+    state_label: str = "baseline",
+) -> None:
+    require_file_artifact(csv_path, f"{state_label} clean CSV")
+    json_records = require_json_artifact(json_path, f"{state_label} clean JSON", list)
     try:
         csv_records = pd.read_csv(csv_path)
     except Exception as exc:
-        raise ArtifactValidationError(f"Baseline clean CSV cannot be read: {csv_path}") from exc
+        raise ArtifactValidationError(
+            f"{state_label.capitalize()} clean CSV cannot be read: {csv_path}"
+        ) from exc
     if len(csv_records) != len(df) or len(json_records) != len(df):
         raise ArtifactValidationError(
-            "Baseline clean artifacts do not match the in-memory row count: "
+            f"{state_label.capitalize()} clean artifacts do not match the in-memory row count: "
             f"dataframe={len(df)}, csv={len(csv_records)}, json={len(json_records)}."
         )
     expected_columns = set(df.columns)
     json_columns = set().union(*(record.keys() for record in json_records)) if json_records else set()
     if set(csv_records.columns) != expected_columns or json_columns != expected_columns:
         raise ArtifactValidationError(
-            "Baseline clean CSV/JSON schema does not match the accepted clean dataframe."
+            f"{state_label.capitalize()} clean CSV/JSON schema does not match "
+            "the accepted clean dataframe."
         )
 
     expected_ids = set(df["paper_id"].astype(str).str.strip().str.lower())
@@ -125,7 +133,8 @@ def _validate_clean_artifacts(df: pd.DataFrame, csv_path, json_path) -> None:
     }
     if csv_ids != expected_ids or json_ids != expected_ids:
         raise ArtifactValidationError(
-            "Baseline clean CSV/JSON paper_id sets do not match the accepted clean dataframe."
+            f"{state_label.capitalize()} clean CSV/JSON paper_id sets do not match "
+            "the accepted clean dataframe."
         )
 
 
@@ -171,7 +180,8 @@ def main() -> None:
             "Loaded source paper_id set does not match the raw records snapshot."
         )
 
-    clean_df = build_clean_dataframe(records, run_date=now_utc())
+    pipeline_run_date = now_utc()
+    clean_df = build_clean_dataframe(records, run_date=pipeline_run_date)
     _validate_clean_dataframe(clean_df)
     write_csv(clean_df, settings.paths.clean_csv)
     write_json(settings.paths.clean_json, _dataframe_records(clean_df))
@@ -263,6 +273,28 @@ def main() -> None:
         freshness=freshness,
     )
     require_file_artifact(settings.paths.baseline_report, "phase 1 Markdown report")
+
+    write_json(
+        settings.paths.baseline_run_metadata,
+        {
+            "schema_version": 1,
+            "run_date_utc": pipeline_run_date.isoformat(),
+            "raw_response_sha256": source_summary["raw_response_sha256"],
+            "raw_records_sha256": source_summary["raw_records_sha256"],
+            "clean_json_sha256": file_sha256(settings.paths.clean_json),
+            "test_set_sha256": source_summary["test_set_sha256"],
+            "embedding_model": settings.embedding_model,
+            "collection_name": settings.baseline_collection_name,
+            "top_k": settings.top_k,
+            "evaluator_provider": settings.llm_provider,
+            "evaluator_model": settings.model_name,
+        },
+    )
+    require_json_artifact(
+        settings.paths.baseline_run_metadata,
+        "baseline run metadata",
+        dict,
+    )
 
     print(f"Baseline pipeline completed with {len(clean_df)} clean records.")
     print(f"Metrics: {settings.paths.baseline_metrics}")

@@ -134,6 +134,7 @@ class Phase1OrchestrationTests(TestCase):
             report.assert_called_once()
             self.assertTrue(settings.paths.clean_csv.exists())
             self.assertTrue(settings.paths.clean_json.exists())
+            self.assertTrue(settings.paths.baseline_run_metadata.exists())
 
             source_summary = report.call_args.kwargs["source_summary"]
             self.assertEqual(source_summary["parsed_records"], 1)
