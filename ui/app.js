@@ -5,6 +5,10 @@ const app = {
   view: "assistant",
   data: null,
   currentSources: [],
+  sourceRegistry: new Map(),
+  sourceSequence: 0,
+  isSubmitting: false,
+  lastFocused: null,
 };
 
 const labels = {
@@ -18,6 +22,23 @@ const escapeHtml = (value) =>
   String(value).replace(/[&<>'"]/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;",
   })[character]);
+
+let toastTimer;
+function showToast(message) {
+  const toast = document.querySelector("#toast");
+  toast.textContent = message;
+  toast.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => { toast.hidden = true; }, 3200);
+}
+
+function registerSources(sources) {
+  return sources.map((paper) => {
+    const key = `source-${++app.sourceSequence}`;
+    app.sourceRegistry.set(key, paper);
+    return { key, paper };
+  });
+}
 
 function bindText(name, value) {
   document.querySelectorAll(`[data-bind="${name}"]`).forEach((element) => {
@@ -38,9 +59,10 @@ function renderSources(sourcePapers) {
       ? app.data.sampleSources
       : app.data.papers.slice(0, 2);
   app.currentSources = visibleSources;
+  const entries = registerSources(visibleSources);
   const container = document.querySelector("#source-cards");
-  container.innerHTML = visibleSources.map((paper, index) => `
-    <button class="source-card" type="button" data-source-index="${index}" aria-label="Mở chi tiết nguồn ${index + 1}">
+  container.innerHTML = entries.map(({ key, paper }, index) => `
+    <button class="source-card" type="button" data-source-key="${key}" aria-label="Mở chi tiết nguồn ${index + 1}: ${escapeHtml(paper.title)}">
       <div class="source-number">${index + 1}</div>
       <div>
         <h4>${escapeHtml(paper.title)}</h4>
@@ -51,8 +73,8 @@ function renderSources(sourcePapers) {
   `).join("");
 }
 
-function openSource(index) {
-  const paper = app.currentSources[index];
+function openSource(key) {
+  const paper = app.sourceRegistry.get(key);
   if (!paper) return;
   document.querySelector("#source-modal-title").textContent = paper.title || "Nguồn không có tiêu đề";
   document.querySelector("#source-modal-authors").textContent = paper.authors || "Không rõ tác giả";
@@ -70,14 +92,16 @@ function openSource(index) {
     link.hidden = true;
   }
   const modal = document.querySelector("#source-modal");
+  app.lastFocused = document.activeElement;
   modal.hidden = false;
   document.body.classList.add("modal-open");
-  modal.querySelector(".source-close").focus();
+  modal.querySelector(".source-dialog").focus();
 }
 
 function closeSource() {
   document.querySelector("#source-modal").hidden = true;
   document.body.classList.remove("modal-open");
+  app.lastFocused?.focus();
 }
 
 function renderMetricDecorations(state) {
@@ -114,6 +138,7 @@ function renderPapers(query = "") {
   const filtered = app.data.papers.filter((paper) =>
     [paper.title, paper.authors, paper.id].some((value) => value.toLowerCase().includes(normalized))
   );
+  document.querySelector("#search-result-count").textContent = `${filtered.length} kết quả`;
   document.querySelector("#paper-table").innerHTML = `
     <div class="paper-table-header"><span>Bài báo</span><span>Xuất bản</span><span>Chủ đề</span><span>Chất lượng</span><span></span></div>
     ${filtered.map((paper) => {
@@ -173,9 +198,10 @@ function renderState() {
   const sampleSources = app.data.sampleSources?.length
     ? app.data.sampleSources
     : app.data.papers.slice(0, 2);
+  const sampleEntries = registerSources(sampleSources);
   bindText("sourceCount", sampleSources.length);
-  document.querySelector("#citation-list").innerHTML = sampleSources.map((paper, index) =>
-    `<button class="citation-chip" data-source-index="${index}" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`
+  document.querySelector("#citation-list").innerHTML = sampleEntries.map(({ key, paper }, index) =>
+    `<button class="citation-chip" data-source-key="${key}" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`
   ).join("");
   renderMetricDecorations(state);
   renderSources(sampleSources);
@@ -186,15 +212,25 @@ function renderState() {
 
 async function changeState(stateName) {
   app.state = stateName;
-  document.querySelectorAll("[data-state]").forEach((button) => button.classList.toggle("is-active", button.dataset.state === stateName));
+  document.querySelectorAll("[data-state]").forEach((button) => {
+    const selected = button.dataset.state === stateName;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
   app.data = await getWorkspace(stateName);
   renderState();
+  if (app.data.notice) showToast(app.data.notice);
 }
 
 function changeView(viewName) {
   if (!labels[viewName]) return;
   app.view = viewName;
-  document.querySelectorAll(".nav-item").forEach((button) => button.classList.toggle("is-active", button.dataset.view === viewName));
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    const selected = button.dataset.view === viewName;
+    button.classList.toggle("is-active", selected);
+    if (selected) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("is-active", view.id === `${viewName}-view`));
   document.querySelector("#page-label").textContent = labels[viewName];
   document.body.classList.remove("menu-open");
@@ -209,16 +245,54 @@ function addUserMessage(question) {
   thread.scrollTop = thread.scrollHeight;
 }
 
+function setSubmitting(value) {
+  app.isSubmitting = value;
+  const input = document.querySelector("#question-input");
+  const send = document.querySelector(".send-button");
+  input.disabled = value;
+  send.disabled = value;
+  send.setAttribute("aria-label", value ? "Đang tạo câu trả lời" : "Gửi câu hỏi");
+  document.querySelector("#chat-thread").setAttribute("aria-busy", String(value));
+}
+
 async function submitQuestion(question) {
-  if (!question.trim()) return;
-  addUserMessage(question);
-  const response = await askResearchQuestion(question, app.state);
-  document.querySelector(".thinking-message")?.remove();
-  app.currentSources = response.sources;
-  document.querySelector("#chat-thread").insertAdjacentHTML("beforeend", `<article class="message assistant-message"><div class="assistant-avatar">P</div><div class="message-content"><div class="message-label">PaperLens <span>Câu trả lời có nguồn</span></div><div class="message-body">${escapeHtml(response.answer)}</div><div class="citation-list">${response.sources.map((paper, index) => `<button class="citation-chip" data-source-index="${index}" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`).join("")}</div><div class="message-actions"><button type="button">Sao chép</button><button type="button">Hữu ích</button><button type="button">Chưa hữu ích</button></div></div></article>`);
-  bindText("sourceCount", response.sources.length);
-  renderSources(response.sources);
-  document.querySelector("#chat-thread").scrollTop = document.querySelector("#chat-thread").scrollHeight;
+  const normalized = question.trim();
+  const input = document.querySelector("#question-input");
+  if (!normalized) {
+    input.setAttribute("aria-invalid", "true");
+    document.querySelector("#chat-form").classList.add("has-error");
+    showToast("Hãy nhập câu hỏi trước khi gửi.");
+    input.focus();
+    return;
+  }
+  if (app.isSubmitting) return;
+  setSubmitting(true);
+  addUserMessage(normalized);
+  try {
+    const response = await askResearchQuestion(normalized, app.state);
+    const entries = registerSources(response.sources);
+    document.querySelector(".thinking-message")?.remove();
+    document.querySelector("#chat-thread").insertAdjacentHTML("beforeend", `<article class="message assistant-message"><div class="assistant-avatar">P</div><div class="message-content"><div class="message-label">PaperLens <span>Câu trả lời có nguồn</span></div><div class="message-body">${escapeHtml(response.answer)}</div><div class="citation-list">${entries.map(({ key, paper }, index) => `<button class="citation-chip" data-source-key="${key}" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`).join("")}</div><div class="message-actions"><button type="button" data-action="copy">Sao chép</button><button type="button" data-action="helpful" aria-pressed="false">Hữu ích</button><button type="button" data-action="unhelpful" aria-pressed="false">Chưa hữu ích</button></div></div></article>`);
+    bindText("sourceCount", response.sources.length);
+    renderSources(response.sources);
+    if (response.notice) showToast(response.notice);
+  } catch (error) {
+    document.querySelector("#chat-thread").insertAdjacentHTML("beforeend", `<p class="empty-state" role="alert">Không thể tạo câu trả lời lúc này. Vui lòng thử lại.</p>`);
+    showToast("Yêu cầu thất bại. Hãy kiểm tra kết nối rồi thử lại.");
+  } finally {
+    document.querySelector(".thinking-message")?.remove();
+    setSubmitting(false);
+    input.focus();
+    document.querySelector("#chat-thread").scrollTop = document.querySelector("#chat-thread").scrollHeight;
+  }
+}
+
+function downloadJson(filename, payload) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: filename });
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast("Đã chuẩn bị tệp JSON để tải xuống.");
 }
 
 document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => changeView(button.dataset.view)));
@@ -229,24 +303,67 @@ document.querySelector("#paper-table").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-url]");
   if (button?.dataset.url) window.open(button.dataset.url, "_blank", "noopener,noreferrer");
 });
-document.addEventListener("click", (event) => {
-  const sourceButton = event.target.closest("[data-source-index]");
-  if (sourceButton) openSource(Number(sourceButton.dataset.sourceIndex));
+document.addEventListener("click", async (event) => {
+  const sourceButton = event.target.closest("[data-source-key]");
+  if (sourceButton) openSource(sourceButton.dataset.sourceKey);
   if (event.target.closest("[data-close-source]")) closeSource();
+  const action = event.target.closest("[data-action]");
+  if (action?.dataset.action === "copy") {
+    try {
+      await navigator.clipboard.writeText(action.closest(".message-content").querySelector(".message-body").textContent);
+      showToast("Đã sao chép câu trả lời.");
+    } catch { showToast("Trình duyệt không cho phép sao chép tự động."); }
+  }
+  if (["helpful", "unhelpful"].includes(action?.dataset.action)) {
+    action.closest(".message-actions").querySelectorAll("[aria-pressed]").forEach((button) => button.setAttribute("aria-pressed", String(button === action)));
+    showToast("Cảm ơn phản hồi của bạn.");
+  }
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !document.querySelector("#source-modal").hidden) closeSource();
+  const modal = document.querySelector("#source-modal");
+  if (modal.hidden) return;
+  if (event.key === "Escape") closeSource();
+  if (event.key === "Tab") {
+    const focusable = [...modal.querySelectorAll('button:not([hidden]), a[href]:not([hidden]), [tabindex="0"]')];
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && (document.activeElement === first || !focusable.includes(document.activeElement))) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
 });
 document.querySelector("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = document.querySelector("#question-input");
   const question = input.value;
-  input.value = "";
+  if (question.trim()) {
+    input.value = "";
+    input.style.height = "auto";
+    document.querySelector("#question-count").textContent = "0/1000";
+  }
   await submitQuestion(question);
+});
+document.querySelector("#question-input").addEventListener("input", (event) => {
+  const input = event.target;
+  input.removeAttribute("aria-invalid");
+  document.querySelector("#chat-form").classList.remove("has-error");
+  document.querySelector("#question-count").textContent = `${input.value.length}/1000`;
+  input.style.height = "auto";
+  input.style.height = `${Math.min(input.scrollHeight, 100)}px`;
+});
+document.querySelector("#question-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    event.currentTarget.form.requestSubmit();
+  }
 });
 document.querySelector("#clear-chat").addEventListener("click", () => {
   document.querySelector("#chat-thread").innerHTML = `<div class="empty-chat"><span>✦</span><strong>Bắt đầu cuộc trò chuyện có căn cứ</strong><p>Hỏi về phương pháp, kết quả, tác giả hoặc ngày xuất bản.</p></div>`;
+  document.querySelector("#question-input").focus();
+  showToast("Đã bắt đầu cuộc trò chuyện mới.");
 });
+document.querySelector("#export-workspace").addEventListener("click", () => downloadJson(`paperlens-${app.state}.json`, app.data));
+document.querySelector("#download-evaluations").addEventListener("click", () => downloadJson(`evaluation-${app.state}.json`, app.data.evaluations));
+document.querySelector("#view-evaluation").addEventListener("click", () => changeView("evaluation"));
 document.querySelector(".mobile-menu").addEventListener("click", () => document.body.classList.toggle("menu-open"));
 document.querySelector(".mobile-overlay").addEventListener("click", () => document.body.classList.remove("menu-open"));
 window.addEventListener("hashchange", () => changeView(window.location.hash.slice(1)));

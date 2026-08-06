@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Bỏ qua điều hướng</a>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Điều hướng chính">
         <a class="brand" href="#" aria-label="Trang chủ PaperLens">
@@ -24,7 +25,7 @@
         </a>
 
         <nav class="nav-list">
-          <button class="nav-item is-active" data-view="assistant" type="button">
+          <button class="nav-item is-active" data-view="assistant" type="button" aria-current="page">
             <span class="nav-icon" aria-hidden="true">✦</span><span>Trợ lý nghiên cứu</span>
           </button>
           <button class="nav-item" data-view="observability" type="button">
@@ -51,7 +52,7 @@
         </button>
       </aside>
 
-      <main class="workspace">
+      <main class="workspace" id="main-content" tabindex="-1">
         <header class="topbar">
           <button class="mobile-menu" type="button" aria-label="Mở điều hướng">☰</button>
           <div class="breadcrumb"><span>Không gian làm việc</span><b>/</b><strong id="page-label">Trợ lý nghiên cứu</strong></div>
@@ -59,9 +60,9 @@
             <span class="demo-badge" data-bind="sourceMode">Đang kết nối…</span>
             <span class="state-picker-label">So sánh dữ liệu:</span>
             <div class="state-picker" role="group" aria-label="Ba trạng thái thử nghiệm của cùng một pipeline">
-              <button class="state-option is-active" data-state="baseline" type="button" title="Dữ liệu sạch dùng làm mốc so sánh"><span></span>Mốc sạch</button>
-              <button class="state-option" data-state="corrupted" type="button" title="Dữ liệu được cố ý làm hỏng để đo mức suy giảm"><span></span>Cố ý làm lỗi</button>
-              <button class="state-option" data-state="repaired" type="button" title="Dữ liệu được sửa lại từ snapshot thô"><span></span>Sau phục hồi</button>
+              <button class="state-option is-active" data-state="baseline" type="button" title="Dữ liệu sạch dùng làm mốc so sánh" aria-pressed="true"><span></span>Mốc sạch</button>
+              <button class="state-option" data-state="corrupted" type="button" title="Dữ liệu được cố ý làm hỏng để đo mức suy giảm" aria-pressed="false"><span></span>Cố ý làm lỗi</button>
+              <button class="state-option" data-state="repaired" type="button" title="Dữ liệu được sửa lại từ snapshot thô" aria-pressed="false"><span></span>Sau phục hồi</button>
             </div>
           </div>
         </header>
@@ -84,7 +85,7 @@
                 <button type="button">Những bài báo nào mới nhất?</button>
               </div>
 
-              <div class="chat-thread" id="chat-thread" aria-live="polite">
+              <div class="chat-thread" id="chat-thread" role="log" aria-label="Lịch sử trò chuyện" aria-live="polite" aria-busy="false">
                 <article class="message user-message">
                   <div class="message-label">Bạn</div>
                   <div class="message-body" id="sample-question">Những ý tưởng chính đằng sau RAG có tác tử là gì?</div>
@@ -100,13 +101,15 @@
                       <button class="citation-chip" type="button"><b>1</b> Hệ thống truy xuất có tác tử</button>
                       <button class="citation-chip" type="button"><b>2</b> RAG thích ứng cho mô hình ngôn ngữ</button>
                     </div>
-                    <div class="message-actions"><button type="button">Sao chép</button><button type="button">Hữu ích</button><button type="button">Chưa hữu ích</button></div>
+                    <div class="message-actions"><button type="button" data-action="copy">Sao chép</button><button type="button" data-action="helpful" aria-pressed="false">Hữu ích</button><button type="button" data-action="unhelpful" aria-pressed="false">Chưa hữu ích</button></div>
                   </div>
                 </article>
               </div>
 
-              <form class="composer" id="chat-form">
-                <textarea id="question-input" rows="1" placeholder="Đặt câu hỏi về các bài báo đã lập chỉ mục…" aria-label="Câu hỏi nghiên cứu"></textarea>
+              <form class="composer" id="chat-form" novalidate>
+                <label class="sr-only" for="question-input">Câu hỏi nghiên cứu</label>
+                <textarea id="question-input" rows="1" maxlength="1000" required placeholder="Đặt câu hỏi về các bài báo đã lập chỉ mục…" aria-describedby="question-help"></textarea>
+                <div class="question-help" id="question-help"><span>Enter để gửi · Shift + Enter để xuống dòng</span><span id="question-count">0/1000</span></div>
                 <div class="composer-footer">
                   <div class="composer-context"><span>⌁</span> <span data-bind="paperCount">24</span> bài báo · top_k 4</div>
                   <button class="send-button" type="submit" aria-label="Gửi câu hỏi">
@@ -143,7 +146,7 @@
           <div class="page-container">
             <div class="page-heading">
               <div><span class="eyebrow">Chất lượng &amp; giám sát</span><h1 id="observability-title">Sức khỏe dữ liệu</h1><p>Kiểm tra dữ liệu đầu vào của RAG có đầy đủ, mới và đủ tin cậy trước khi dùng để trả lời hay không.</p></div>
-              <button class="secondary-button" type="button">Xuất báo cáo</button>
+              <button class="secondary-button" id="export-workspace" type="button">Xuất báo cáo JSON</button>
             </div>
             <div class="observability-explainer">
               <span aria-hidden="true">i</span>
@@ -176,7 +179,7 @@
               </article>
 
               <article class="panel comparison-panel">
-                <div class="panel-heading"><div><span class="eyebrow">Thí nghiệm có kiểm soát</span><h2>So sánh trạng thái</h2></div><button class="text-button" type="button">Mở báo cáo ↗</button></div>
+                <div class="panel-heading"><div><span class="eyebrow">Thí nghiệm có kiểm soát</span><h2>So sánh trạng thái</h2></div><button class="text-button" id="view-evaluation" type="button">Xem đánh giá ↗</button></div>
                 <div class="legend"><span class="baseline-key">Mốc sạch</span><span class="corrupted-key">Cố ý làm lỗi</span><span class="repaired-key">Sau phục hồi</span></div>
                 <div class="comparison-chart" id="comparison-chart"></div>
                 <div class="recovery-note"><span>↺</span><div><strong>Phục hồi trả lại dữ liệu chuẩn</strong><p>Trạng thái phục hồi được dựng lại từ snapshot thô đã khóa, tuyệt đối không sao chép từ dữ liệu ban đầu.</p></div></div>
@@ -188,14 +191,14 @@
         <section class="view" id="documents-view" aria-labelledby="documents-title">
           <div class="page-container">
             <div class="page-heading"><div><span class="eyebrow">Kho tài liệu nguồn</span><h1 id="documents-title">Thư viện bài báo</h1><p>Kiểm tra các tài liệu sẵn sàng cho truy xuất trong trạng thái đã chọn.</p></div><span class="count-badge"><span data-bind="paperCount">24</span> bản ghi</span></div>
-            <div class="library-toolbar"><label class="search-box"><span>⌕</span><input id="paper-search" type="search" placeholder="Tìm theo tiêu đề, tác giả hoặc DOI…" /></label><button class="filter-button" type="button">Ngày xuất bản⌄</button><button class="filter-button" type="button">Trạng thái chất lượng⌄</button></div>
+            <div class="library-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">Tìm bài báo</span><input id="paper-search" type="search" placeholder="Tìm theo tiêu đề, tác giả hoặc DOI…" autocomplete="off" /></label><span class="search-result-count" id="search-result-count" role="status"></span></div>
             <div class="paper-table" id="paper-table"></div>
           </div>
         </section>
 
         <section class="view" id="evaluation-view" aria-labelledby="evaluation-title">
           <div class="page-container">
-            <div class="page-heading"><div><span class="eyebrow">Bộ kiểm thử cố định · <span data-bind="evaluationCount">12</span> câu hỏi</span><h1 id="evaluation-title">Bằng chứng đánh giá</h1><p>Cùng câu hỏi, mô hình và top_k được tái sử dụng cho cả ba trạng thái.</p></div><button class="secondary-button" type="button">Tải JSON</button></div>
+            <div class="page-heading"><div><span class="eyebrow">Bộ kiểm thử cố định · <span data-bind="evaluationCount">12</span> câu hỏi</span><h1 id="evaluation-title">Bằng chứng đánh giá</h1><p>Cùng câu hỏi, mô hình và top_k được tái sử dụng cho cả ba trạng thái.</p></div><button class="secondary-button" id="download-evaluations" type="button">Tải JSON</button></div>
             <div class="evaluation-summary">
               <article><span>Tỷ lệ truy xuất đúng</span><strong data-bind="hitRate">91.7%</strong><small>tìm thấy tài liệu ground truth</small></article>
               <article><span>Độ chính xác câu trả lời</span><strong data-bind="accuracy">83.3%</strong><small>đồng thuận của LLM chấm điểm</small></article>
@@ -212,8 +215,8 @@
     </div>
     <div class="mobile-overlay"></div>
     <div class="source-modal" id="source-modal" hidden>
-      <button class="source-modal-backdrop" type="button" data-close-source aria-label="Đóng chi tiết nguồn"></button>
-      <section class="source-dialog" role="dialog" aria-modal="true" aria-labelledby="source-modal-title">
+      <button class="source-modal-backdrop" type="button" data-close-source tabindex="-1" aria-label="Đóng chi tiết nguồn"></button>
+      <section class="source-dialog" role="dialog" aria-modal="true" aria-labelledby="source-modal-title" tabindex="-1">
         <header class="source-dialog-header">
           <div><span class="eyebrow">Bản ghi nguồn từ Crossref</span><h2 id="source-modal-title"></h2></div>
           <button class="source-close" type="button" data-close-source aria-label="Đóng">×</button>
@@ -239,6 +242,7 @@
         </footer>
       </section>
     </div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="app.js"></script>
   </body>
 </html>

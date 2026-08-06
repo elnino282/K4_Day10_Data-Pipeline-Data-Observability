@@ -1,6 +1,6 @@
 export const states = {
   baseline: {
-    label: "Ban đầu",
+    label: "Mốc sạch",
     collection: "papers-baseline",
     paperCount: 24,
     hitRate: 91.7,
@@ -17,7 +17,7 @@ export const states = {
     freshLabel: "2 bản ghi vượt ngưỡng tuổi",
   },
   corrupted: {
-    label: "Bị lỗi",
+    label: "Cố ý làm lỗi",
     collection: "papers-corrupted",
     paperCount: 21,
     hitRate: 58.3,
@@ -34,7 +34,7 @@ export const states = {
     freshLabel: "8 bản ghi vượt ngưỡng tuổi",
   },
   repaired: {
-    label: "Phục hồi",
+    label: "Sau phục hồi",
     collection: "papers-repaired",
     paperCount: 24,
     hitRate: 91.7,
