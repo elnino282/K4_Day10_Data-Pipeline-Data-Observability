@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from core.config import load_settings, normalized_provider, require_llm_credentials
+from retrieval.agent import SYSTEM_PROMPT
 from retrieval.llm import build_llm
 
 
@@ -38,6 +39,12 @@ def test_unknown_provider_is_rejected():
     settings = replace(load_settings(), llm_provider="unknown")
     with pytest.raises(RuntimeError, match="Unsupported"):
         require_llm_credentials(settings)
+
+
+def test_agent_prompt_forbids_inferred_metadata():
+    assert "Never infer, guess, enrich" in SYSTEM_PROMPT
+    assert "If it is `uncategorized`, answer `uncategorized`" in SYSTEM_PROMPT
+    assert "do not propose broader, plausible, or inferred categories" in SYSTEM_PROMPT
 
 
 @patch("retrieval.llm.ChatGoogleGenerativeAI")
