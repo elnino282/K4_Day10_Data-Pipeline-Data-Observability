@@ -1,0 +1,410 @@
+{
+  "evaluation_set": "data\\eval\\test_set.json",
+  "evaluation_set_sha256": "a25ae6f5570fa94accec413e31aaa425d96534ece7d55f0c26a3562114a13aaf",
+  "baseline": {
+    "samples": 24,
+    "retrieval_hit_rate": 1.0,
+    "mean_token_f1": 1.0,
+    "judge_accuracy": 1.0,
+    "mean_judge_score": 5,
+    "ragas": {
+      "skipped": "Set RUN_RAGAS=1 to enable the slower Ragas pass."
+    }
+  },
+  "corrupted": {
+    "samples": 24,
+    "retrieval_hit_rate": 0.5,
+    "mean_token_f1": 0.49111440275034746,
+    "judge_accuracy": 0.4583333333333333,
+    "mean_judge_score": 2.875,
+    "ragas": {
+      "skipped": "Set RUN_RAGAS=1 to enable the slower Ragas pass."
+    }
+  },
+  "repaired": {
+    "samples": 24,
+    "retrieval_hit_rate": 1.0,
+    "mean_token_f1": 1.0,
+    "judge_accuracy": 1.0,
+    "mean_judge_score": 5,
+    "ragas": {
+      "skipped": "Set RUN_RAGAS=1 to enable the slower Ragas pass."
+    }
+  },
+  "delta_corrupted_vs_baseline": {
+    "retrieval_hit_rate": -0.5,
+    "mean_token_f1": -0.508886,
+    "judge_accuracy": -0.541667,
+    "mean_judge_score": -2.125
+  },
+  "delta_repaired_vs_corrupted": {
+    "retrieval_hit_rate": 0.5,
+    "mean_token_f1": 0.508886,
+    "judge_accuracy": 0.541667,
+    "mean_judge_score": 2.125
+  },
+  "quality": {
+    "baseline": {
+      "report_name": "baseline_quality",
+      "framework": "declarative_quality_checks",
+      "overall_success": true,
+      "statistics": {
+        "evaluated_checks": 13,
+        "successful_checks": 13,
+        "unsuccessful_checks": 0,
+        "success_percent": 100.0
+      },
+      "row_count": 24,
+      "checks": [
+        {
+          "name": "required_columns",
+          "dimension": "schema",
+          "success": true,
+          "observed": [],
+          "expectation": "no required columns are missing"
+        },
+        {
+          "name": "minimum_row_count",
+          "dimension": "volume",
+          "success": true,
+          "observed": 24,
+          "expectation": ">= 4 rows"
+        },
+        {
+          "name": "paper_id_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 blank IDs"
+        },
+        {
+          "name": "paper_id_unique",
+          "dimension": "uniqueness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 rows with duplicate IDs"
+        },
+        {
+          "name": "title_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 blank titles"
+        },
+        {
+          "name": "title_length",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% titles shorter than 8 chars"
+        },
+        {
+          "name": "summary_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% blank summaries"
+        },
+        {
+          "name": "summary_length",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 10% summaries shorter than 40 chars"
+        },
+        {
+          "name": "published_valid",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 invalid dates"
+        },
+        {
+          "name": "age_days_valid",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% invalid ages"
+        },
+        {
+          "name": "freshness_ratio",
+          "dimension": "freshness",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 20% stale rows"
+        },
+        {
+          "name": "embedding_text_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "0 blank embedding texts"
+        },
+        {
+          "name": "summary_chars_consistent",
+          "dimension": "consistency",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 inconsistent rows"
+        }
+      ]
+    },
+    "corrupted": {
+      "report_name": "corrupted_quality",
+      "framework": "declarative_quality_checks",
+      "overall_success": false,
+      "statistics": {
+        "evaluated_checks": 13,
+        "successful_checks": 11,
+        "unsuccessful_checks": 2,
+        "success_percent": 84.62
+      },
+      "row_count": 24,
+      "checks": [
+        {
+          "name": "required_columns",
+          "dimension": "schema",
+          "success": true,
+          "observed": [],
+          "expectation": "no required columns are missing"
+        },
+        {
+          "name": "minimum_row_count",
+          "dimension": "volume",
+          "success": true,
+          "observed": 24,
+          "expectation": ">= 4 rows"
+        },
+        {
+          "name": "paper_id_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 blank IDs"
+        },
+        {
+          "name": "paper_id_unique",
+          "dimension": "uniqueness",
+          "success": false,
+          "observed": 4,
+          "expectation": "0 rows with duplicate IDs"
+        },
+        {
+          "name": "title_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 blank titles"
+        },
+        {
+          "name": "title_length",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% titles shorter than 8 chars"
+        },
+        {
+          "name": "summary_complete",
+          "dimension": "completeness",
+          "success": false,
+          "observed": 0.0833,
+          "expectation": "<= 5% blank summaries"
+        },
+        {
+          "name": "summary_length",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0833,
+          "expectation": "<= 10% summaries shorter than 40 chars"
+        },
+        {
+          "name": "published_valid",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 invalid dates"
+        },
+        {
+          "name": "age_days_valid",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% invalid ages"
+        },
+        {
+          "name": "freshness_ratio",
+          "dimension": "freshness",
+          "success": true,
+          "observed": 0.0833,
+          "expectation": "<= 20% stale rows"
+        },
+        {
+          "name": "embedding_text_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "0 blank embedding texts"
+        },
+        {
+          "name": "summary_chars_consistent",
+          "dimension": "consistency",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 inconsistent rows"
+        }
+      ]
+    },
+    "repaired": {
+      "report_name": "repaired_quality",
+      "framework": "declarative_quality_checks",
+      "overall_success": true,
+      "statistics": {
+        "evaluated_checks": 13,
+        "successful_checks": 13,
+        "unsuccessful_checks": 0,
+        "success_percent": 100.0
+      },
+      "row_count": 24,
+      "checks": [
+        {
+          "name": "required_columns",
+          "dimension": "schema",
+          "success": true,
+          "observed": [],
+          "expectation": "no required columns are missing"
+        },
+        {
+          "name": "minimum_row_count",
+          "dimension": "volume",
+          "success": true,
+          "observed": 24,
+          "expectation": ">= 4 rows"
+        },
+        {
+          "name": "paper_id_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 blank IDs"
+        },
+        {
+          "name": "paper_id_unique",
+          "dimension": "uniqueness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 rows with duplicate IDs"
+        },
+        {
+          "name": "title_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 blank titles"
+        },
+        {
+          "name": "title_length",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% titles shorter than 8 chars"
+        },
+        {
+          "name": "summary_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% blank summaries"
+        },
+        {
+          "name": "summary_length",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 10% summaries shorter than 40 chars"
+        },
+        {
+          "name": "published_valid",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 invalid dates"
+        },
+        {
+          "name": "age_days_valid",
+          "dimension": "validity",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 5% invalid ages"
+        },
+        {
+          "name": "freshness_ratio",
+          "dimension": "freshness",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "<= 20% stale rows"
+        },
+        {
+          "name": "embedding_text_complete",
+          "dimension": "completeness",
+          "success": true,
+          "observed": 0.0,
+          "expectation": "0 blank embedding texts"
+        },
+        {
+          "name": "summary_chars_consistent",
+          "dimension": "consistency",
+          "success": true,
+          "observed": 0,
+          "expectation": "0 inconsistent rows"
+        }
+      ]
+    }
+  },
+  "freshness": {
+    "baseline": {
+      "threshold_days": 180,
+      "latest_published": "2026-08-01",
+      "oldest_published": "2026-02-12",
+      "stale_rows": 0,
+      "fresh_rows": 24,
+      "total_rows": 24,
+      "stale_ratio": 0.0,
+      "invalid_date_rows": 0,
+      "is_fresh": true,
+      "status": "fresh"
+    },
+    "corrupted": {
+      "threshold_days": 180,
+      "latest_published": "2026-07-13",
+      "oldest_published": "2021-07-02",
+      "stale_rows": 2,
+      "fresh_rows": 22,
+      "total_rows": 24,
+      "stale_ratio": 0.0833,
+      "invalid_date_rows": 0,
+      "is_fresh": false,
+      "status": "stale_or_invalid"
+    },
+    "repaired": {
+      "threshold_days": 180,
+      "latest_published": "2026-08-01",
+      "oldest_published": "2026-02-12",
+      "stale_rows": 0,
+      "fresh_rows": 24,
+      "total_rows": 24,
+      "stale_ratio": 0.0,
+      "invalid_date_rows": 0,
+      "is_fresh": true,
+      "status": "fresh"
+    }
+  },
+  "repair_validation": {
+    "baseline_rows": 24,
+    "repaired_rows": 24,
+    "baseline_unique_ids": 24,
+    "repaired_unique_ids": 24,
+    "missing_after_repair": [],
+    "unexpected_after_repair": [],
+    "document_identity_restored": true
+  }
+}

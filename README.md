@@ -114,9 +114,13 @@ Mặc định project dùng Gemini:
 LLM_PROVIDER=gemini
 LLM_MODEL=gemini-2.5-flash
 GOOGLE_API_KEY=your_key_here
+OPENAI_API_KEY=your_openai_key_here
+EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 Project cũng hỗ trợ `openai`, `anthropic`, `openrouter`, `ollama` và OpenAI-compatible custom endpoint. Chỉ điền credential của provider bạn sử dụng.
+
+`LLM_PROVIDER` và embedding provider độc lập với nhau. Ví dụ, bạn có thể dùng Gemini cho LLM nhưng vẫn dùng `text-embedding-3-small` cho embedding; trường hợp này vẫn cần `OPENAI_API_KEY`. Sau khi đổi `EMBEDDING_MODEL`, hãy build lại Chroma index để tránh sai kích thước vector.
 
 Không commit `.env`, API key hoặc secret lên GitHub.
 
@@ -226,7 +230,19 @@ Các chỉ số trọng tâm:
 
 Mục tiêu không chỉ là pipeline chạy xong, mà phải có bằng chứng cho thấy data corruption làm thay đổi chất lượng agent và repair giúp khôi phục chất lượng.
 
-## 7. Lỗi setup thường gặp
+## 7. Chạy giao diện desktop
+
+Sau khi kích hoạt `.venv`, khởi động UI đã nối với các artifact của pipeline:
+
+```bash
+python script/run_ui.py
+```
+
+Sau đó mở `http://127.0.0.1:4173`. Server này phục vụ cả giao diện và API cùng origin; không dùng `python -m http.server` vì lệnh đó chỉ phục vụ file tĩnh và không thể gọi pipeline RAG.
+
+UI đọc ba trạng thái `baseline`, `corrupted`, `repaired` từ `data/`, dùng `EMBEDDING_MODEL` cùng credential embedding tương ứng trong `.env`, và dùng cấu hình `LLM_PROVIDER`/`LLM_MODEL` để trả lời câu hỏi. API chỉ trả trạng thái có/không có credential, không gửi giá trị API key xuống trình duyệt.
+
+## 8. Lỗi setup thường gặp
 
 | Triệu chứng                                         | Nguyên nhân thường gặp                          | Cách kiểm tra/xử lý                                                             |
 | ----------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -237,7 +253,7 @@ Mục tiêu không chỉ là pipeline chạy xong, mà phải có bằng chứng
 | Crossref trả`429`/`503`                          | Rate limit hoặc lỗi tạm thời                     | Implement retry/backoff theo yêu cầu trong`src/ingestion/crossref.py`           |
 | Chạy corruption flow nhưng thiếu baseline artifact | Chưa chạy xong Pha 1                               | Chạy baseline và kiểm tra`data/results/baseline_metrics.json` trước          |
 
-## 8. Checklist trước khi nộp
+## 9. Checklist trước khi nộp
 
 - [ ] Cài đặt được trên môi trường sạch bằng một trong hai cách ở trên
 - [ ] Baseline pipeline chạy end-to-end

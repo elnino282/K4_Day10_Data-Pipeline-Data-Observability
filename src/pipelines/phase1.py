@@ -218,7 +218,11 @@ def main() -> None:
         raise ArtifactValidationError(
             "Baseline metrics artifact does not match the evaluation summary returned in memory."
         )
-    quality = run_data_quality_checks(clean_df, settings=settings, report_name="baseline")
+    quality = run_data_quality_checks(
+        clean_df,
+        settings=settings,
+        report_name="baseline_quality",
+    )
     quality_payload = require_json_artifact(
         settings.paths.baseline_quality_report,
         "baseline quality report",
@@ -256,6 +260,9 @@ def main() -> None:
         "requested_records": request_params.get("rows", settings.max_results),
         "parsed_records": len(records),
         "clean_records": len(clean_df),
+        "raw_record_count": len(records),
+        "clean_record_count": len(clean_df),
+        "clean_schema": list(clean_df.columns),
         "fetched_at_utc": request_metadata.get("fetched_at_utc"),
         "raw_response_path": str(settings.paths.raw_api_response),
         "raw_request_metadata_path": str(settings.paths.raw_request_metadata),

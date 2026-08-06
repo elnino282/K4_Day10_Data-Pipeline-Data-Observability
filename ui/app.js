@@ -30,9 +30,14 @@ function bindWidth(name, value) {
   });
 }
 
-function renderSources(sourcePapers = app.data.papers.slice(0, 2)) {
+function renderSources(sourcePapers) {
+  const visibleSources = sourcePapers?.length
+    ? sourcePapers
+    : app.data.sampleSources?.length
+      ? app.data.sampleSources
+      : app.data.papers.slice(0, 2);
   const container = document.querySelector("#source-cards");
-  container.innerHTML = sourcePapers.map((paper, index) => `
+  container.innerHTML = visibleSources.map((paper, index) => `
     <article class="source-card">
       <div class="source-number">${index + 1}</div>
       <div>
@@ -85,7 +90,7 @@ function renderPapers(query = "") {
       const statusLabel = status === "issue" ? "Phát hiện lỗi" : status === "stale" ? "Lỗi thời" : "Đạt";
       return `<article class="paper-row">
         <div class="paper-title-cell"><span class="paper-icon">▤</span><div><strong>${escapeHtml(paper.title)}</strong><small>${escapeHtml(paper.authors)} · ${escapeHtml(paper.id)}</small></div></div>
-        <time>${paper.published}</time><span>${paper.category}</span><span class="quality-pill ${status}"><i></i>${statusLabel}</span><button type="button" aria-label="Mở bài báo">↗</button>
+        <time>${paper.published}</time><span>${paper.category}</span><span class="quality-pill ${status}"><i></i>${statusLabel}</span><button type="button" data-url="${escapeHtml(paper.url || "")}" aria-label="Mở bài báo">↗</button>
       </article>`;
     }).join("") || `<div class="empty-state">Không có bài báo khớp với “${escapeHtml(query)}”.</div>`}
   `;
@@ -107,6 +112,10 @@ function renderState() {
   const state = app.data.state;
   bindText("collection", state.collection);
   bindText("collectionShort", state.label.toLowerCase());
+  bindText("sourceMode", app.data.sourceMode || "Dữ liệu mẫu");
+  bindText("rawHash", app.data.rawHash || "không có");
+  bindText("embeddingModel", app.data.embeddingModel || "không rõ");
+  bindText("topK", app.data.topK || 4);
   bindText("paperCount", state.paperCount);
   bindText("hitRate", `${state.hitRate.toFixed(1)}%`);
   bindText("hitDelta", state.hitDelta);
@@ -114,16 +123,31 @@ function renderState() {
   bindText("tokenF1", state.tokenF1.toFixed(2));
   bindText("judgeScore", state.judgeScore.toFixed(1));
   bindText("qualityPassed", state.qualityPassed);
+  bindText("qualityTotal", state.qualityTotal);
   bindText("qualityLabel", state.qualityLabel);
   bindText("freshRecords", state.freshRecords);
   bindText("freshLabel", state.freshLabel);
   bindText("trustScore", state.trustScore);
   bindText("trustLabel", state.trustLabel);
+  bindText("evaluationCount", app.data.evaluations.length);
   bindWidth("qualityProgress", state.qualityPassed / state.qualityTotal * 100);
-  bindWidth("freshProgress", state.freshRecords / 24 * 100);
+  bindWidth("freshProgress", state.freshRecords / state.paperCount * 100);
   document.body.dataset.state = app.state;
+  if (app.data.sampleQuestion) {
+    document.querySelector("#sample-question").textContent = app.data.sampleQuestion;
+  }
+  if (app.data.sampleAnswer) {
+    document.querySelector("#sample-answer").textContent = app.data.sampleAnswer;
+  }
+  const sampleSources = app.data.sampleSources?.length
+    ? app.data.sampleSources
+    : app.data.papers.slice(0, 2);
+  bindText("sourceCount", sampleSources.length);
+  document.querySelector("#citation-list").innerHTML = sampleSources.map((paper, index) =>
+    `<button class="citation-chip" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`
+  ).join("");
   renderMetricDecorations(state);
-  renderSources();
+  renderSources(sampleSources);
   renderComparison();
   renderPapers(document.querySelector("#paper-search").value);
   renderEvaluations();
@@ -160,6 +184,7 @@ async function submitQuestion(question) {
   const response = await askResearchQuestion(question, app.state);
   document.querySelector(".thinking-message")?.remove();
   document.querySelector("#chat-thread").insertAdjacentHTML("beforeend", `<article class="message assistant-message"><div class="assistant-avatar">P</div><div class="message-content"><div class="message-label">PaperLens <span>Câu trả lời có nguồn</span></div><div class="message-body">${escapeHtml(response.answer)}</div><div class="citation-list">${response.sources.map((paper, index) => `<button class="citation-chip" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`).join("")}</div><div class="message-actions"><button type="button">Sao chép</button><button type="button">Hữu ích</button><button type="button">Chưa hữu ích</button></div></div></article>`);
+  bindText("sourceCount", response.sources.length);
   renderSources(response.sources);
   document.querySelector("#chat-thread").scrollTop = document.querySelector("#chat-thread").scrollHeight;
 }
@@ -168,6 +193,10 @@ document.querySelectorAll(".nav-item").forEach((button) => button.addEventListen
 document.querySelectorAll("[data-state]").forEach((button) => button.addEventListener("click", () => changeState(button.dataset.state)));
 document.querySelectorAll(".suggestion-row button").forEach((button) => button.addEventListener("click", () => submitQuestion(button.textContent)));
 document.querySelector("#paper-search").addEventListener("input", (event) => renderPapers(event.target.value));
+document.querySelector("#paper-table").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-url]");
+  if (button?.dataset.url) window.open(button.dataset.url, "_blank", "noopener,noreferrer");
+});
 document.querySelector("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = document.querySelector("#question-input");

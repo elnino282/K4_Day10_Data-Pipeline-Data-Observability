@@ -9,7 +9,7 @@ import pandas as pd
 
 from core.config import Settings
 from core.utils import read_json, safe_slug, write_json
-from retrieval.embeddings import MiniLMEmbeddings
+from retrieval.embeddings import build_embeddings
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,7 @@ class LocalEmbeddingIndex:
         self.documents = documents
         self.persist_path = persist_path
         self.embedding_backend = "chroma"
-        self.embedding_model = MiniLMEmbeddings(settings.embedding_model)
+        self.embedding_model = build_embeddings(settings)
         self.client = chromadb.PersistentClient(path=str(persist_path))
         self.collection = self.client.get_collection(name=collection_name)
         self.documents_by_paper_id = {document["paper_id"].lower(): document for document in documents}
@@ -57,6 +57,7 @@ class LocalEmbeddingIndex:
                         "published": row["published"],
                         "authors_joined": row["authors_joined"],
                         "categories_joined": row["categories_joined"],
+                        "primary_category": row["primary_category"],
                         "summary": row["summary"],
                         "abs_url": row["abs_url"],
                         "pdf_url": row["pdf_url"],
@@ -92,7 +93,7 @@ class LocalEmbeddingIndex:
         persist_path = settings.paths.chroma_dir
         persist_path.mkdir(parents=True, exist_ok=True)
 
-        embedding_model = MiniLMEmbeddings(settings.embedding_model)
+        embedding_model = build_embeddings(settings)
         client = chromadb.PersistentClient(path=str(persist_path))
         try:
             client.delete_collection(name=collection_name)
@@ -116,7 +117,7 @@ class LocalEmbeddingIndex:
             {
                 "backend": "chroma",
                 "embedding_model": settings.embedding_model,
-                "persist_path": str(persist_path),
+                "persist_path": str(persist_path.relative_to(settings.paths.project_dir)),
                 "collection_name": collection_name,
                 "documents": documents,
             },
@@ -131,11 +132,21 @@ class LocalEmbeddingIndex:
     @classmethod
     def load(cls, settings: Settings, embeddings_path: Path | None = None) -> "LocalEmbeddingIndex":
         payload = read_json(embeddings_path or settings.paths.embeddings_json)
+        indexed_model = payload.get("embedding_model")
+        if indexed_model != settings.embedding_model:
+            raise RuntimeError(
+                "Embedding model mismatch: the persisted index uses "
+                f"{indexed_model!r}, but EMBEDDING_MODEL is {settings.embedding_model!r}. "
+                "Rebuild the index before querying it."
+            )
+        persist_path = Path(payload["persist_path"])
+        if not persist_path.is_absolute():
+            persist_path = settings.paths.project_dir / persist_path
         return cls(
             settings=settings,
             collection_name=payload["collection_name"],
             documents=payload["documents"],
-            persist_path=Path(payload["persist_path"]),
+            persist_path=persist_path,
         )
 
     def search(self, query: str, top_k: int | None = None) -> list[SearchResult]:

@@ -38,8 +38,8 @@
         <div class="sidebar-spacer"></div>
         <div class="snapshot-card">
           <div class="snapshot-heading"><span class="status-dot"></span> Ảnh chụp dữ liệu đã khóa</div>
-          <p>Crossref · 24 bản ghi</p>
-          <div class="snapshot-meta"><span>SHA</span><code>7f42…c91a</code></div>
+          <p>Crossref · <span data-bind="paperCount">24</span> bản ghi</p>
+          <div class="snapshot-meta"><span>SHA</span><code data-bind="rawHash">đang tải…</code></div>
         </div>
         <button class="profile" type="button">
           <span class="avatar">K4</span>
@@ -53,7 +53,7 @@
           <button class="mobile-menu" type="button" aria-label="Mở điều hướng">☰</button>
           <div class="breadcrumb"><span>Không gian làm việc</span><b>/</b><strong id="page-label">Trợ lý nghiên cứu</strong></div>
           <div class="topbar-actions">
-            <span class="demo-badge">Dữ liệu mẫu</span>
+            <span class="demo-badge" data-bind="sourceMode">Đang kết nối…</span>
             <div class="state-picker" role="group" aria-label="Trạng thái dữ liệu">
               <button class="state-option is-active" data-state="baseline" type="button"><span></span>Ban đầu</button>
               <button class="state-option" data-state="corrupted" type="button"><span></span>Bị lỗi</button>
@@ -83,7 +83,7 @@
               <div class="chat-thread" id="chat-thread" aria-live="polite">
                 <article class="message user-message">
                   <div class="message-label">Bạn</div>
-                  <div class="message-body">Những ý tưởng chính đằng sau RAG có tác tử là gì?</div>
+                  <div class="message-body" id="sample-question">Những ý tưởng chính đằng sau RAG có tác tử là gì?</div>
                 </article>
                 <article class="message assistant-message">
                   <div class="assistant-avatar" aria-hidden="true">P</div>
@@ -113,7 +113,7 @@
             </div>
 
             <aside class="evidence-pane" aria-label="Bằng chứng cho câu trả lời">
-              <div class="evidence-header"><div><span class="eyebrow">Chuỗi bằng chứng</span><h2>Vì sao có câu trả lời này?</h2></div><span class="source-count">2 nguồn</span></div>
+              <div class="evidence-header"><div><span class="eyebrow">Chuỗi bằng chứng</span><h2>Vì sao có câu trả lời này?</h2></div><span class="source-count"><span data-bind="sourceCount">2</span> nguồn</span></div>
               <div class="trust-card">
                 <div class="trust-ring" data-bind="trustScore">94</div>
                 <div><strong data-bind="trustLabel">Ngữ cảnh tốt</strong><p>Kết quả truy xuất và kiểm tra dữ liệu của trạng thái này.</p></div>
@@ -126,8 +126,8 @@
                 <h3>Truy vết câu trả lời</h3>
                 <dl class="trace-list">
                   <div><dt>Bộ sưu tập</dt><dd data-bind="collection">papers-baseline</dd></div>
-                  <div><dt>Mô hình nhúng</dt><dd>all-MiniLM-L6-v2</dd></div>
-                  <div><dt>Truy xuất</dt><dd>Top 4 · cosine</dd></div>
+                  <div><dt>Mô hình nhúng</dt><dd data-bind="embeddingModel">đang tải…</dd></div>
+                  <div><dt>Truy xuất</dt><dd>Top <span data-bind="topK">4</span> · cosine</dd></div>
                   <div><dt>Bộ đánh giá</dt><dd>Gemini · chấm điểm</dd></div>
                 </dl>
               </div>
@@ -143,8 +143,8 @@
             </div>
             <div class="metric-grid">
               <article class="metric-card"><div class="metric-title">Tỷ lệ truy xuất đúng <span>↗</span></div><strong data-bind="hitRate">91.7%</strong><small data-bind="hitDelta">Mốc tham chiếu ban đầu</small><div class="micro-bars" id="hit-bars"></div></article>
-              <article class="metric-card"><div class="metric-title">Kiểm tra chất lượng <span>✓</span></div><strong><span data-bind="qualityPassed">8</span><em>/ 8</em></strong><small data-bind="qualityLabel">Tất cả kiểm tra đều đạt</small><div class="progress-track"><i data-bind-style="qualityProgress"></i></div></article>
-              <article class="metric-card"><div class="metric-title">Độ mới dữ liệu <span>◷</span></div><strong><span data-bind="freshRecords">22</span><em>/ 24</em></strong><small data-bind="freshLabel">2 bản ghi vượt ngưỡng tuổi</small><div class="progress-track amber"><i data-bind-style="freshProgress"></i></div></article>
+              <article class="metric-card"><div class="metric-title">Kiểm tra chất lượng <span>✓</span></div><strong><span data-bind="qualityPassed">8</span><em>/ <span data-bind="qualityTotal">8</span></em></strong><small data-bind="qualityLabel">Tất cả kiểm tra đều đạt</small><div class="progress-track"><i data-bind-style="qualityProgress"></i></div></article>
+              <article class="metric-card"><div class="metric-title">Độ mới dữ liệu <span>◷</span></div><strong><span data-bind="freshRecords">22</span><em>/ <span data-bind="paperCount">24</span></em></strong><small data-bind="freshLabel">2 bản ghi vượt ngưỡng tuổi</small><div class="progress-track amber"><i data-bind-style="freshProgress"></i></div></article>
               <article class="metric-card"><div class="metric-title">Điểm chấm trung bình <span>✦</span></div><strong data-bind="judgeScore">4.4</strong><small>LLM chấm điểm · thang 5 điểm</small><div class="score-dots" id="score-dots"></div></article>
             </div>
 
@@ -187,7 +187,7 @@
 
         <section class="view" id="evaluation-view" aria-labelledby="evaluation-title">
           <div class="page-container">
-            <div class="page-heading"><div><span class="eyebrow">Bộ kiểm thử cố định · 12 câu hỏi</span><h1 id="evaluation-title">Bằng chứng đánh giá</h1><p>Cùng câu hỏi, mô hình và top_k được tái sử dụng cho cả ba trạng thái.</p></div><button class="secondary-button" type="button">Tải JSON</button></div>
+            <div class="page-heading"><div><span class="eyebrow">Bộ kiểm thử cố định · <span data-bind="evaluationCount">12</span> câu hỏi</span><h1 id="evaluation-title">Bằng chứng đánh giá</h1><p>Cùng câu hỏi, mô hình và top_k được tái sử dụng cho cả ba trạng thái.</p></div><button class="secondary-button" type="button">Tải JSON</button></div>
             <div class="evaluation-summary">
               <article><span>Tỷ lệ truy xuất đúng</span><strong data-bind="hitRate">91.7%</strong><small>tìm thấy tài liệu ground truth</small></article>
               <article><span>Độ chính xác câu trả lời</span><strong data-bind="accuracy">83.3%</strong><small>đồng thuận của LLM chấm điểm</small></article>

@@ -7,16 +7,18 @@ Giao diện mẫu cho lab RAG và giám sát dữ liệu Ngày 10. Giao diện k
 Từ thư mục gốc của dự án:
 
 ```powershell
-python -m http.server 4173 --directory ui
+python script/run_ui.py
 ```
 
 Sau đó mở <http://127.0.0.1:4173>.
 
 ## Điểm nối với pipeline
 
-Khi API Python đã sẵn sàng, đặt `USE_PIPELINE_API = true` trong `api.js` và cung cấp:
+Server tích hợp hiện cung cấp:
 
 - `GET /api/workspace?state=baseline|corrupted|repaired`
 - `POST /api/chat` với `{ "question": "...", "state": "baseline" }`
 
-Phản hồi workspace cần có `state`, `papers`, `evaluations` và `comparisonMetrics`. Phản hồi chat cần có `answer`, `sources` và `state`. API key luôn nằm ở phía máy chủ; trình duyệt không bao giờ đọc `.env`.
+Dashboard đọc trực tiếp artifact clean, answers, metrics, quality và freshness. Chat tải hoặc dựng Chroma collection theo trạng thái rồi gọi RAG agent. API key luôn nằm ở phía máy chủ; trình duyệt không bao giờ đọc `.env`.
+
+Có thể đổi địa chỉ bằng `UI_HOST` và `UI_PORT` trong `.env`. Nếu chỉ chạy static server, giao diện tự chuyển sang dữ liệu mẫu vì không có `/api`.

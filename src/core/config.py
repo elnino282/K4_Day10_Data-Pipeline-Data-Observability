@@ -85,8 +85,10 @@ def load_settings(project_dir: Path | None = None) -> Settings:
     freshness_threshold_days = 180
     source_from_date = (datetime.now(UTC).date() - timedelta(days=freshness_threshold_days)).isoformat()
 
-    load_dotenv(workspace / ".env")
+    # Project-local settings take precedence over the optional workspace-level
+    # fallback. Existing process environment variables still remain highest.
     load_dotenv(root / ".env", override=False)
+    load_dotenv(workspace / ".env", override=False)
 
     data_dir = root / "data"
     paths = Paths(
@@ -116,8 +118,8 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         corrupted_quality_report=data_dir / "quality" / "corrupted_quality.json",
         repaired_quality_report=data_dir / "quality" / "repaired_quality.json",
         freshness_report=data_dir / "quality" / "freshness_report.json",
-        corrupted_freshness_report=data_dir / "quality" / "corrupted_freshness.json",
-        repaired_freshness_report=data_dir / "quality" / "repaired_freshness.json",
+        corrupted_freshness_report=data_dir / "quality" / "corrupted_freshness_report.json",
+        repaired_freshness_report=data_dir / "quality" / "repaired_freshness_report.json",
         baseline_report=data_dir / "reports" / "phase1_report.md",
         corruption_log=data_dir / "results" / "corruption_log.json",
         corrupted_metrics=data_dir / "results" / "corrupted_metrics.json",
@@ -138,7 +140,7 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         custom_llm_api_key=os.getenv("CUSTOM_LLM_API_KEY"),
         custom_llm_base_url=os.getenv("CUSTOM_LLM_BASE_URL"),
-        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+        embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
         baseline_collection_name="papers-baseline",
         corrupted_collection_name="papers-corrupted",
         repaired_collection_name="papers-repaired",

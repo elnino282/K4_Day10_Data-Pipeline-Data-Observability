@@ -291,6 +291,13 @@ def load_raw_records(path: Path) -> list[PaperRecord]:
     for index, item in enumerate(payload):
         if not isinstance(item, dict):
             raise ValueError(f"Raw record at index {index} is not a JSON object.")
+        required_fields = set(PaperRecord.__dataclass_fields__)
+        missing_fields = sorted(required_fields - set(item))
+        if missing_fields:
+            raise ValueError(
+                f"Raw record at index {index} has missing fields: "
+                f"{', '.join(missing_fields)}."
+            )
         try:
             record = PaperRecord(**item)
         except (TypeError, ValueError) as exc:

@@ -214,7 +214,11 @@ def _observe_state(
     quality_path: Path,
     freshness_path: Path,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    quality = run_data_quality_checks(df, settings=settings, report_name=state_label)
+    quality = run_data_quality_checks(
+        df,
+        settings=settings,
+        report_name=f"{state_label}_quality",
+    )
     quality_payload = _require_nonempty_json(
         quality_path,
         f"{state_label} quality report",
@@ -293,12 +297,12 @@ def main() -> None:
         dict,
     )
     _require_nonempty_json(settings.paths.baseline_answers, "baseline answers", list)
-    _require_nonempty_json(
+    baseline_quality = _require_nonempty_json(
         settings.paths.baseline_quality_report,
         "baseline quality report",
         dict,
     )
-    _require_nonempty_json(
+    baseline_freshness = _require_nonempty_json(
         settings.paths.baseline_freshness_report,
         "baseline freshness report",
         dict,
@@ -437,6 +441,8 @@ def main() -> None:
         repaired_quality=repaired_quality,
         corrupted_freshness=corrupted_freshness,
         repaired_freshness=repaired_freshness,
+        baseline_quality=baseline_quality,
+        baseline_freshness=baseline_freshness,
     )
     require_file_artifact(settings.paths.comparison_report, "corruption comparison report")
     _assert_hashes_unchanged(protected_hashes, "comparison reporting")

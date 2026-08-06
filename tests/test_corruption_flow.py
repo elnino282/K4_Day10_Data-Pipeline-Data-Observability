@@ -168,10 +168,10 @@ class CorruptionFlowOrchestrationTests(TestCase):
                 return SimpleNamespace(summary=summary)
 
             def quality_side_effect(_df, settings, report_name):
-                payload = {"success": report_name == "repaired", "state": report_name}
+                payload = {"success": report_name == "repaired_quality", "state": report_name}
                 path = (
                     settings.paths.corrupted_quality_report
-                    if report_name == "corrupted"
+                    if report_name == "corrupted_quality"
                     else settings.paths.repaired_quality_report
                 )
                 write_json(path, payload)
