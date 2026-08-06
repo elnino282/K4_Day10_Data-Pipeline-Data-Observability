@@ -80,7 +80,7 @@ Crossref được lưu raw, chuyển thành clean contract, nhúng bằng MiniLM
 | Retrieval hit rate | 1.000 | 0.500 | 1.000 | Drop và suy giảm nội dung làm mất hit |
 | Mean token F1 | 1.000 | 0.491 | 1.000 | Blank/noise/truncate làm sai evidence |
 | Judge accuracy | 1.000 | 0.458 | 1.000 | Corruption lan tới answer quality |
-| Mean judge score | 5.000 | 2.875 | 5.000 | Phục hồi hoàn toàn sau rebuild |
+| Mean judge score | 5.000 | 2.833 | 5.000 | Phục hồi hoàn toàn sau rebuild |
 | Quality checks | 13/13 | 11/13 | 13/13 | Duplicate và blank summary bị phát hiện |
 | Freshness | fresh | stale_or_invalid | fresh | Hai stale rows làm đổi trạng thái |
 

@@ -44,6 +44,8 @@ class Paths:
     corrupted_answers: Path
     repaired_metrics: Path
     repaired_answers: Path
+    comparison_metrics: Path
+    repair_validation: Path
     comparison_report: Path
 
     @property
@@ -126,12 +128,14 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         corrupted_answers=data_dir / "results" / "corrupted_answers.json",
         repaired_metrics=data_dir / "results" / "repaired_metrics.json",
         repaired_answers=data_dir / "results" / "repaired_answers.json",
+        comparison_metrics=data_dir / "results" / "comparison_metrics.json",
+        repair_validation=data_dir / "results" / "repair_validation.json",
         comparison_report=data_dir / "reports" / "corruption_report.md",
     )
 
     return Settings(
         llm_provider=os.getenv("LLM_PROVIDER", "gemini"),
-        model_name=os.getenv("LLM_MODEL", "gemini-2.5-flash"),
+        model_name=os.getenv("LLM_MODEL", "gemini-3.1-flash-lite"),
         google_api_key=os.getenv("GOOGLE_API_KEY"),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),

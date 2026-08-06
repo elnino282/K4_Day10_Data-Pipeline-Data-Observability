@@ -432,6 +432,66 @@ def main() -> None:
     )
     _assert_hashes_unchanged(protected_hashes, "repaired-state processing")
 
+    baseline_ids = set(baseline_df["paper_id"].astype(str))
+    repaired_ids = set(repaired_df["paper_id"].astype(str))
+    repair_validation = {
+        "baseline_rows": len(baseline_df),
+        "repaired_rows": len(repaired_df),
+        "baseline_unique_ids": len(baseline_ids),
+        "repaired_unique_ids": len(repaired_ids),
+        "missing_after_repair": sorted(baseline_ids - repaired_ids),
+        "unexpected_after_repair": sorted(repaired_ids - baseline_ids),
+        "document_identity_restored": _canonical_records(baseline_df)
+        == _canonical_records(repaired_df),
+    }
+    write_json(settings.paths.repair_validation, repair_validation)
+    require_json_artifact(
+        settings.paths.repair_validation,
+        "repair validation",
+        dict,
+    )
+
+    metric_names = (
+        "retrieval_hit_rate",
+        "mean_token_f1",
+        "judge_accuracy",
+        "mean_judge_score",
+    )
+    comparison_metrics = {
+        "evaluation_set": str(
+            settings.paths.eval_testset.relative_to(settings.paths.project_dir)
+        ),
+        "evaluation_set_sha256": file_sha256(settings.paths.eval_testset),
+        "baseline": baseline_metrics,
+        "corrupted": corrupted_metrics,
+        "repaired": repaired_metrics,
+        "delta_corrupted_vs_baseline": {
+            name: round(float(corrupted_metrics[name]) - float(baseline_metrics[name]), 6)
+            for name in metric_names
+        },
+        "delta_repaired_vs_corrupted": {
+            name: round(float(repaired_metrics[name]) - float(corrupted_metrics[name]), 6)
+            for name in metric_names
+        },
+        "quality": {
+            "baseline": baseline_quality,
+            "corrupted": corrupted_quality,
+            "repaired": repaired_quality,
+        },
+        "freshness": {
+            "baseline": baseline_freshness,
+            "corrupted": corrupted_freshness,
+            "repaired": repaired_freshness,
+        },
+        "repair_validation": repair_validation,
+    }
+    write_json(settings.paths.comparison_metrics, comparison_metrics)
+    require_json_artifact(
+        settings.paths.comparison_metrics,
+        "machine-readable comparison",
+        dict,
+    )
+
     generate_corruption_report(
         report_path=settings.paths.comparison_report,
         baseline_metrics=baseline_metrics,

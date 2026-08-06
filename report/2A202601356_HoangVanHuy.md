@@ -4,12 +4,12 @@
 
 | Thong tin | Noi dung |
 |---|---|
-| Ho va ten | Hoang Van Huy |
+| Ho va ten | Hoàng Văn Huy|
 | MSSV | 2A202601356 |
 | Khoa/Lop | K4 |
 | Ten nhom | K4 Day 10 - Data Pipeline & Observability |
 | Vai tro chinh | Role 4 - Corruption & Integration owner |
-| Repository | `K4_Day10_Data-Pipeline-Data-Observability` |
+| Repository | [GitHub](https://github.com/elnino282/K4_Day10_Data-Pipeline-Data-Observability) |
 | Ngay hoan thanh | 2026-08-06 |
 
 ## 2. Vai tro va pham vi cong viec
@@ -36,7 +36,7 @@
 | Nhiem vu da thuc hien | File/ham/artifact lien quan | Ket qua ban giao | Cach xac minh |
 |---|---|---|---|
 | Ap dung 6 corruption scenario co log | `src/ingestion/corruption.py`, `data/results/corruption_log.json` | Drop latest, blank summary, summary noise, truncate title, stale date, duplicate rows | Doc log va chay `uv run python -m pytest tests/test_corruption.py -q` |
-| Danh gia corrupted state bang cung test set | `src/pipelines/corruption_flow.py`, `data/results/corrupted_metrics.json` | `retrieval_hit_rate=0.500`, `mean_token_f1=0.491`, `judge_accuracy=0.458`, `mean_judge_score=2.875` | Doi chieu `data/results/comparison_metrics.json` |
+| Danh gia corrupted state bang cung test set | `src/pipelines/corruption_flow.py`, `data/results/corrupted_metrics.json` | `retrieval_hit_rate=0.500`, `mean_token_f1=0.491`, `judge_accuracy=0.458`, `mean_judge_score=2.833` | Doi chieu `data/results/comparison_metrics.json` |
 | Repair bang cach rebuild tu raw snapshot | `load_raw_records`, `build_clean_dataframe`, `_assert_repaired_matches_baseline` | Repaired phuc hoi 24/24 ID va canonical content | `repair_validation.document_identity_restored=true` |
 | Tao bao cao so sanh ba trang thai | `data/reports/corruption_report.md` | Report neu ro delta corruption va delta repair | Mo report va so voi `comparison_metrics.json` |
 
@@ -109,7 +109,7 @@ uv run python -m pytest -q
 | `retrieval_hit_rate` | 1.000 | 0.500 | 1.000 | Drop latest records lam mat ground-truth IDs nen retrieval giam ro nhat |
 | `mean_token_f1` | 1.000 | 0.491 | 1.000 | Summary rong/noisy va title bi cat lam cau tra loi mat factual evidence |
 | `judge_accuracy` | 1.000 | 0.458 | 1.000 | Judge phat hien nhieu cau tra loi khong con dung sau corruption |
-| `mean_judge_score` | 5.000 | 2.875 | 5.000 | Diem trung binh giam hon 2 diem, sau repair phuc hoi toi da |
+| `mean_judge_score` | 5.000 | 2.833 | 5.000 | Diem trung binh giam hon 2 diem, sau repair phuc hoi toi da |
 | Quality checks | 13/13 | 11/13 | 13/13 | Duplicate ID va blank summary la hai loi quality fail |
 | Freshness status | fresh | stale_or_invalid | fresh | Stale date lam co 2 rows qua nguong 180 ngay |
 

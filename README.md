@@ -112,7 +112,7 @@ Mặc định project dùng Gemini:
 
 ```dotenv
 LLM_PROVIDER=gemini
-LLM_MODEL=gemini-2.5-flash
+LLM_MODEL=gemini-3.1-flash-lite
 GOOGLE_API_KEY=your_key_here
 OPENAI_API_KEY=your_openai_key_here
 EMBEDDING_MODEL=text-embedding-3-small
@@ -136,7 +136,7 @@ Các thư mục chính:
 | `src/evaluation/`    | Tạo test set và tính metrics                   |
 | `src/observability/` | Data quality, freshness và báo cáo             |
 | `src/pipelines/`     | Điều phối baseline flow và corruption flow    |
-| `script/`            | Hai entrypoint để chạy pipeline                |
+| `script/`            | Entrypoint chạy pipeline, Ragas và UI          |
 | `data/`              | Artifact sinh ra khi chạy lab                    |
 
 Starter cố ý chứa `TODO(student)` và `NotImplementedError`. Đây là trạng thái mong đợi, không phải lỗi setup.
@@ -202,6 +202,16 @@ Nếu dùng pip:
 python script/run_corruption_flow.py
 ```
 
+### Pha 3 - Ragas trên answer trace đã khóa
+
+Sau khi hai flow trên đã sinh đủ ba file `*answers.json`, chạy Ragas mà không lặp lại ingestion, embedding, retrieval hoặc judge:
+
+```bash
+python script/run_ragas.py
+```
+
+Runner chấm bốn metric `answer_relevancy`, `context_precision`, `context_recall` và `faithfulness`, lưu provider/model/input hash trong `ragas_run`, rồi đồng bộ `comparison_metrics.json` và các báo cáo. Có thể chạy `python script/run_ragas.py --smoke` để kiểm tra một mẫu mà không sửa artifact. Các giới hạn concurrency, timeout và retry nằm trong `.env.example`.
+
 ## 6. Kiểm tra kết quả
 
 Sau baseline, tối thiểu cần kiểm tra:
@@ -218,6 +228,8 @@ Sau corruption flow, kiểm tra thêm:
 
 - corrupted/repaired dataset và metrics trong `data/`
 - `data/results/corruption_log.json`
+- `data/results/comparison_metrics.json`
+- `data/results/repair_validation.json`
 - `data/reports/corruption_report.md`
 
 Các chỉ số trọng tâm:
@@ -226,6 +238,10 @@ Các chỉ số trọng tâm:
 - `mean_token_f1`
 - `judge_accuracy`
 - `mean_judge_score`
+- `ragas.answer_relevancy`
+- `ragas.context_precision`
+- `ragas.context_recall`
+- `ragas.faithfulness`
 - trạng thái data quality và freshness
 
 Mục tiêu không chỉ là pipeline chạy xong, mà phải có bằng chứng cho thấy data corruption làm thay đổi chất lượng agent và repair giúp khôi phục chất lượng.

@@ -11,7 +11,14 @@ import tempfile
 import pandas as pd
 
 from core.config import Settings, load_settings
-from core.utils import ArtifactValidationError, file_sha256, write_csv, write_json, write_text
+from core.utils import (
+    ArtifactValidationError,
+    file_sha256,
+    read_json,
+    write_csv,
+    write_json,
+    write_text,
+)
 from ingestion.crossref import PaperRecord
 from pipelines.corruption_flow import main
 from pipelines.phase1 import _dataframe_records
@@ -91,7 +98,15 @@ def _write_baseline(settings: Settings) -> None:
         },
     )
     write_json(settings.paths.eval_testset, _test_set())
-    write_json(settings.paths.baseline_metrics, {"retrieval_hit_rate": 1.0})
+    write_json(
+        settings.paths.baseline_metrics,
+        {
+            "retrieval_hit_rate": 1.0,
+            "mean_token_f1": 1.0,
+            "judge_accuracy": 1.0,
+            "mean_judge_score": 5.0,
+        },
+    )
     write_json(settings.paths.baseline_answers, [{"id": "q-1", "retrieval_hit": True}])
     write_json(settings.paths.baseline_quality_report, {"success": True})
     write_json(settings.paths.baseline_freshness_report, {"is_fresh": True})
@@ -137,8 +152,18 @@ class CorruptionFlowOrchestrationTests(TestCase):
             )
             baseline_hashes = {path: file_sha256(path) for path in baseline_paths}
             metrics_by_path = {
-                settings.paths.corrupted_metrics: {"retrieval_hit_rate": 0.0},
-                settings.paths.repaired_metrics: {"retrieval_hit_rate": 1.0},
+                settings.paths.corrupted_metrics: {
+                    "retrieval_hit_rate": 0.0,
+                    "mean_token_f1": 0.25,
+                    "judge_accuracy": 0.0,
+                    "mean_judge_score": 1.0,
+                },
+                settings.paths.repaired_metrics: {
+                    "retrieval_hit_rate": 1.0,
+                    "mean_token_f1": 1.0,
+                    "judge_accuracy": 1.0,
+                    "mean_judge_score": 5.0,
+                },
             }
 
             def corruption_side_effect(_df, output_log_path):
@@ -211,7 +236,21 @@ class CorruptionFlowOrchestrationTests(TestCase):
             report.assert_called_once()
             self.assertTrue(settings.paths.corrupted_clean_json.exists())
             self.assertTrue(settings.paths.repaired_clean_json.exists())
+            self.assertTrue(settings.paths.comparison_metrics.exists())
+            self.assertTrue(settings.paths.repair_validation.exists())
             self.assertTrue(settings.paths.comparison_report.exists())
+            comparison = read_json(settings.paths.comparison_metrics)
+            self.assertEqual(
+                comparison["evaluation_set_sha256"],
+                file_sha256(settings.paths.eval_testset),
+            )
+            self.assertEqual(
+                comparison["delta_corrupted_vs_baseline"]["retrieval_hit_rate"],
+                -1.0,
+            )
+            repair_validation = read_json(settings.paths.repair_validation)
+            self.assertTrue(repair_validation["document_identity_restored"])
+            self.assertEqual(repair_validation["missing_after_repair"], [])
             for path, expected_hash in baseline_hashes.items():
                 self.assertEqual(file_sha256(path), expected_hash)
 

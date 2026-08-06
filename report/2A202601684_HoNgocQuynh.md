@@ -81,7 +81,7 @@ Raw Crossref được clean thành document canonical; role 3 biến `text_for_e
 | Retrieval hit rate | 1.000 | 0.500 | 1.000 | Vector evidence suy giảm rõ nhất |
 | Mean token F1 | 1.000 | 0.491 | 1.000 | Nội dung nguồn chi phối answer |
 | Judge accuracy | 1.000 | 0.458 | 1.000 | Judge xác nhận degradation |
-| Mean judge score | 5.000 | 2.875 | 5.000 | Repair phục hồi answer quality |
+| Mean judge score | 5.000 | 2.833 | 5.000 | Repair phục hồi answer quality |
 | Quality checks | 13/13 | 11/13 | 13/13 | Signal data đi trước metric |
 | Freshness | fresh | stale_or_invalid | fresh | Stale data được tách khỏi relevance |
 

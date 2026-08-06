@@ -55,6 +55,11 @@ class SettingsContractTests(TestCase):
                 "baseline_run.json",
             )
             self.assertEqual(
+                settings.paths.comparison_metrics.name,
+                "comparison_metrics.json",
+            )
+            self.assertEqual(settings.paths.repair_validation.name, "repair_validation.json")
+            self.assertEqual(
                 len(
                     {
                         settings.baseline_collection_name,

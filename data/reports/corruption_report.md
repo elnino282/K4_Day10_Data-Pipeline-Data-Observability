@@ -1,6 +1,6 @@
 # Corruption, Repair and RAG Impact Report
 
-Generated at `2026-08-06T09:15:02.264512+00:00`. All three states use the same persisted evaluation set.
+Generated at `2026-08-06T16:16:43.689243+00:00`. All three states use the same persisted evaluation set.
 
 ## Executive conclusion
 
@@ -13,7 +13,11 @@ Corruption changed retrieval hit rate by **-0.500** and token F1 by **-0.509**. 
 | `retrieval_hit_rate` | 1.000 | 0.500 | 1.000 | -0.500 | 0.500 |
 | `mean_token_f1` | 1.000 | 0.491 | 1.000 | -0.509 | 0.509 |
 | `judge_accuracy` | 1.000 | 0.458 | 1.000 | -0.542 | 0.542 |
-| `mean_judge_score` | 5.000 | 2.875 | 5.000 | -2.125 | 2.125 |
+| `mean_judge_score` | 5.000 | 2.833 | 5.000 | -2.167 | 2.167 |
+| `ragas.answer_relevancy` | n/a | n/a | n/a | n/a | n/a |
+| `ragas.context_precision` | n/a | n/a | n/a | n/a | n/a |
+| `ragas.context_recall` | n/a | n/a | n/a | n/a | n/a |
+| `ragas.faithfulness` | n/a | n/a | n/a | n/a | n/a |
 
 ### Retrieval hit-rate visualization
 
@@ -42,8 +46,8 @@ Repaired  ████████████████████ 1.000
 ## Reproduction
 
 ```powershell
-uv run python script/run_phase1.py
-uv run python script/run_corruption_flow.py
+.\.venv\Scripts\python.exe -m pipelines.phase1
+.\.venv\Scripts\python.exe -m pipelines.corruption_flow
 ```
 
 See `data/results/corruption_log.json` for affected IDs and `data/results/comparison_metrics.json` for the machine-readable comparison.

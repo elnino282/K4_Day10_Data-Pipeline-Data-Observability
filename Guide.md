@@ -180,6 +180,14 @@ Chỉ số cần quan tâm:
 - `mean_judge_score`
 - `ragas`
 
+Để chấm Ragas hậu kiểm trên các answer trace đã sinh mà không chạy lại toàn bộ pipeline:
+
+```bash
+python script/run_ragas.py
+```
+
+Lệnh ghi bốn metric Ragas vào ba file metrics, lưu metadata evaluator/input hash trong `ragas_run`, cập nhật `comparison_metrics.json` và hai báo cáo pipeline. Dùng `--smoke` để kiểm tra một mẫu nhưng không ghi artifact.
+
 ## Bước 11: Tạo data quality report
 
 Cần hoàn thành:
@@ -221,7 +229,7 @@ Flow corruption cần:
 6. Tạo freshness report
 7. Repair lại từ raw source
 8. Evaluate lại lần nữa
-9. Tạo comparison report
+9. Tạo machine-readable comparison, repair validation và comparison report
 
 Chạy:
 

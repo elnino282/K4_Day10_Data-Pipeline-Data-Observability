@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_date_utc": "2026-08-06T15:33:04.915069+00:00",
+  "raw_response_sha256": "5c9dd61a1d95bd3ff1f3420ddbf7bdd3327f53b0b6b813bde85314e4f3726aba",
+  "raw_records_sha256": "08212d57894e9e495d5b94b07b064d5f8432af917b31a194dc3686eed1a3cba1",
+  "clean_json_sha256": "f064a58304ffcc1c61fcb70b3201c12aa8be41c37eef02b44aaa966cf1445bb5",
+  "test_set_sha256": "a25ae6f5570fa94accec413e31aaa425d96534ece7d55f0c26a3562114a13aaf",
+  "embedding_model": "text-embedding-3-small",
+  "collection_name": "papers-baseline",
+  "top_k": 4,
+  "evaluator_provider": "gemini",
+  "evaluator_model": "gemini-3.1-flash-lite"
+}

@@ -1,6 +1,6 @@
 # Baseline Pipeline Report
 
-Generated at `2026-08-06T09:10:57.052264+00:00` from the artifacts produced by this run.
+Generated at `2026-08-06T15:46:09.408578+00:00` from the artifacts produced by this run.
 
 ## Executive summary
 
@@ -17,9 +17,11 @@ Generated at `2026-08-06T09:10:57.052264+00:00` from the artifacts produced by t
 | API | `https://api.crossref.org/works` |
 | Query | `agentic retrieval augmented generation large language model` |
 | Filter | `from-pub-date:2026-02-07,has-abstract:true` |
-| Max requested | 24 |
-| Raw response | `data\raw\crossref_response.json` |
-| Normalized raw records | `data\raw\crossref_records.json` |
+| Requested records | 24 |
+| Source snapshot fetched at | `2026-08-06T08:11:57.767481+00:00` |
+| Cached snapshot reused | True |
+| Raw response | `C:\Users\Quynh Ho\Documents\GitHub\K4_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
+| Normalized raw records | `C:\Users\Quynh Ho\Documents\GitHub\K4_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
 | Clean schema | `paper_id, title, summary, authors, authors_joined, categories, categories_joined, primary_category, published, updated, age_days, summary_chars, abs_url, pdf_url, comment, text_for_embedding` |
 
 ## Retrieval and answer quality

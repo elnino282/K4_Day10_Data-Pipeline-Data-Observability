@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
+import math
 from statistics import mean
 import os
 import sys
@@ -70,9 +72,17 @@ Return:
         )
 
 
-def _run_ragas(settings: Settings, answers: list[dict[str, Any]]) -> dict[str, Any]:
-    if os.getenv("RUN_RAGAS", "").lower() not in {"1", "true", "yes"}:
+def run_ragas(
+    settings: Settings,
+    answers: list[dict[str, Any]],
+    *,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Run the four required Ragas metrics with bounded API concurrency/retries."""
+    if not force and os.getenv("RUN_RAGAS", "").lower() not in {"1", "true", "yes"}:
         return {"skipped": "Set RUN_RAGAS=1 to enable the slower Ragas pass."}
+    if not answers:
+        return {"error": "Ragas evaluation failed: no answer traces were supplied."}
     try:
         if "langchain_community.chat_models.vertexai" not in sys.modules:
             shim = types.ModuleType("langchain_community.chat_models.vertexai")
@@ -80,6 +90,15 @@ def _run_ragas(settings: Settings, answers: list[dict[str, Any]]) -> dict[str, A
             sys.modules["langchain_community.chat_models.vertexai"] = shim
         from ragas import evaluate
         from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
+        from ragas.run_config import RunConfig
+
+        # Gemini 3.1 Flash Lite rejects requests with candidate_count > 1.
+        # Ragas defaults answer relevancy to three candidates, so use one
+        # independent generated question while keeping the metric itself.
+        answer_relevancy_metric = deepcopy(answer_relevancy)
+        answer_relevancy_metric.strictness = int(
+            os.getenv("RAGAS_ANSWER_RELEVANCY_STRICTNESS", "1")
+        )
 
         dataset = Dataset.from_dict(
             {
@@ -91,13 +110,45 @@ def _run_ragas(settings: Settings, answers: list[dict[str, Any]]) -> dict[str, A
         )
         result = evaluate(
             dataset,
-            metrics=[answer_relevancy, context_precision, context_recall, faithfulness],
+            metrics=[
+                answer_relevancy_metric,
+                context_precision,
+                context_recall,
+                faithfulness,
+            ],
             llm=build_llm(settings=settings, temperature=0.0),
             embeddings=build_embeddings(settings),
+            run_config=RunConfig(
+                timeout=int(os.getenv("RAGAS_TIMEOUT_SECONDS", "90")),
+                # The Gemini free tier is limited to 15 generation requests/minute.
+                # A single worker plus a retry window longer than one quota interval
+                # prevents a full Ragas pass from failing after a successful smoke test.
+                max_retries=int(os.getenv("RAGAS_MAX_RETRIES", "10")),
+                max_wait=int(os.getenv("RAGAS_MAX_WAIT_SECONDS", "70")),
+                max_workers=int(os.getenv("RAGAS_MAX_WORKERS", "1")),
+            ),
+            raise_exceptions=True,
         )
-        return dict(result)
+        metric_names = (
+            "answer_relevancy",
+            "context_precision",
+            "context_recall",
+            "faithfulness",
+        )
+        summary: dict[str, float] = {}
+        for name in metric_names:
+            values = [float(row[name]) for row in result.scores]
+            if not values or not all(math.isfinite(value) for value in values):
+                raise ValueError(f"Ragas returned a missing or non-finite {name} score.")
+            summary[name] = mean(values)
+        return summary
     except Exception as exc:  # pragma: no cover
-        return {"error": f"Ragas evaluation failed: {exc}"}
+        return {"error": f"Ragas evaluation failed: {exc!r}"}
+
+
+def _run_ragas(settings: Settings, answers: list[dict[str, Any]]) -> dict[str, Any]:
+    """Backward-compatible environment-gated wrapper used by the E2E pipeline."""
+    return run_ragas(settings, answers)
 
 
 def evaluate_pipeline(

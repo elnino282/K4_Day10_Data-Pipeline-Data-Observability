@@ -78,7 +78,9 @@ Generated at `{generated_at}` from the artifacts produced by this run.
 | API | `{source_summary.get('api_url', 'https://api.crossref.org/works')}` |
 | Query | `{source_summary.get('query', '')}` |
 | Filter | `{source_summary.get('filter', '')}` |
-| Max requested | {source_summary.get('max_results', 'n/a')} |
+| Requested records | {source_summary.get('requested_records', source_summary.get('max_results', 'n/a'))} |
+| Source snapshot fetched at | `{source_summary.get('fetched_at_utc', 'n/a')}` |
+| Cached snapshot reused | {source_summary.get('used_cached_snapshot', 'n/a')} |
 | Raw response | `{source_summary.get('raw_response_path', '')}` |
 | Normalized raw records | `{source_summary.get('raw_records_path', '')}` |
 | Clean schema | `{', '.join(source_summary.get('clean_schema', []))}` |
@@ -142,6 +144,25 @@ def generate_corruption_report(
             f"| `{name}` | {_metric(baseline)} | {_metric(corrupted)} | {_metric(repaired)} | "
             f"{_metric(corrupted_delta)} | {_metric(repaired_delta)} |"
         )
+    ragas_names = ("answer_relevancy", "context_precision", "context_recall", "faithfulness")
+    for name in ragas_names:
+        baseline = baseline_metrics.get("ragas", {}).get(name)
+        corrupted = corrupted_metrics.get("ragas", {}).get(name)
+        repaired = repaired_metrics.get("ragas", {}).get(name)
+        corrupted_delta = (
+            float(corrupted) - float(baseline)
+            if isinstance(baseline, (int, float)) and isinstance(corrupted, (int, float))
+            else None
+        )
+        repaired_delta = (
+            float(repaired) - float(corrupted)
+            if isinstance(corrupted, (int, float)) and isinstance(repaired, (int, float))
+            else None
+        )
+        rows.append(
+            f"| `ragas.{name}` | {_metric(baseline)} | {_metric(corrupted)} | "
+            f"{_metric(repaired)} | {_metric(corrupted_delta)} | {_metric(repaired_delta)} |"
+        )
 
     baseline_hit = float(baseline_metrics.get("retrieval_hit_rate", 0.0))
     corrupted_hit = float(corrupted_metrics.get("retrieval_hit_rate", 0.0))
@@ -191,8 +212,8 @@ Repaired  {_bar(repaired_hit)} {_metric(repaired_hit)}
 ## Reproduction
 
 ```powershell
-.\.venv\Scripts\python.exe -m pipelines.phase1
-.\.venv\Scripts\python.exe -m pipelines.corruption_flow
+.\\.venv\\Scripts\\python.exe -m pipelines.phase1
+.\\.venv\\Scripts\\python.exe -m pipelines.corruption_flow
 ```
 
 See `data/results/corruption_log.json` for affected IDs and `data/results/comparison_metrics.json` for the machine-readable comparison.

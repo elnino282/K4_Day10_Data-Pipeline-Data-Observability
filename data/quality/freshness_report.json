@@ -1,5 +1,7 @@
 {
+  "measured_at_utc": "2026-08-06T15:46:09.402041+00:00",
   "threshold_days": 180,
+  "freshness_threshold_days": 180,
   "latest_published": "2026-08-01",
   "oldest_published": "2026-02-12",
   "stale_rows": 0,
@@ -7,6 +9,7 @@
   "total_rows": 24,
   "stale_ratio": 0.0,
   "invalid_date_rows": 0,
+  "invalid_published": 0,
   "is_fresh": true,
   "status": "fresh"
 }
