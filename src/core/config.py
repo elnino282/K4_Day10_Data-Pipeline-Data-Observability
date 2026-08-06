@@ -31,7 +31,12 @@ class Paths:
     demo_answers: Path
     quality_dir: Path
     gx_dir: Path
+    baseline_quality_report: Path
+    corrupted_quality_report: Path
+    repaired_quality_report: Path
     freshness_report: Path
+    corrupted_freshness_report: Path
+    repaired_freshness_report: Path
     baseline_report: Path
     corruption_log: Path
     corrupted_metrics: Path
@@ -39,6 +44,11 @@ class Paths:
     repaired_metrics: Path
     repaired_answers: Path
     comparison_report: Path
+
+    @property
+    def baseline_freshness_report(self) -> Path:
+        """Explicit baseline alias kept compatible with the starter path."""
+        return self.freshness_report
 
 
 @dataclass(frozen=True)
@@ -100,7 +110,12 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         demo_answers=data_dir / "results" / "agent_demo_answers.json",
         quality_dir=data_dir / "quality",
         gx_dir=data_dir / "quality" / "gx",
+        baseline_quality_report=data_dir / "quality" / "baseline_quality.json",
+        corrupted_quality_report=data_dir / "quality" / "corrupted_quality.json",
+        repaired_quality_report=data_dir / "quality" / "repaired_quality.json",
         freshness_report=data_dir / "quality" / "freshness_report.json",
+        corrupted_freshness_report=data_dir / "quality" / "corrupted_freshness.json",
+        repaired_freshness_report=data_dir / "quality" / "repaired_freshness.json",
         baseline_report=data_dir / "reports" / "phase1_report.md",
         corruption_log=data_dir / "results" / "corruption_log.json",
         corrupted_metrics=data_dir / "results" / "corrupted_metrics.json",
@@ -125,7 +140,7 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         baseline_collection_name="papers-baseline",
         corrupted_collection_name="papers-corrupted",
         repaired_collection_name="papers-repaired",
-        source_api="Crossref REST API",
+        source_api="https://api.crossref.org/works",
         source_query="agentic retrieval augmented generation large language model",
         source_filter=f"from-pub-date:{source_from_date},has-abstract:true",
         max_results=24,
