@@ -1,0 +1,105 @@
+{
+  "report_name": "repaired_quality",
+  "framework": "declarative_quality_checks",
+  "overall_success": true,
+  "statistics": {
+    "evaluated_checks": 13,
+    "successful_checks": 13,
+    "unsuccessful_checks": 0,
+    "success_percent": 100.0
+  },
+  "row_count": 24,
+  "checks": [
+    {
+      "name": "required_columns",
+      "dimension": "schema",
+      "success": true,
+      "observed": [],
+      "expectation": "no required columns are missing"
+    },
+    {
+      "name": "minimum_row_count",
+      "dimension": "volume",
+      "success": true,
+      "observed": 24,
+      "expectation": ">= 4 rows"
+    },
+    {
+      "name": "paper_id_complete",
+      "dimension": "completeness",
+      "success": true,
+      "observed": 0,
+      "expectation": "0 blank IDs"
+    },
+    {
+      "name": "paper_id_unique",
+      "dimension": "uniqueness",
+      "success": true,
+      "observed": 0,
+      "expectation": "0 rows with duplicate IDs"
+    },
+    {
+      "name": "title_complete",
+      "dimension": "completeness",
+      "success": true,
+      "observed": 0,
+      "expectation": "0 blank titles"
+    },
+    {
+      "name": "title_length",
+      "dimension": "validity",
+      "success": true,
+      "observed": 0.0,
+      "expectation": "<= 5% titles shorter than 8 chars"
+    },
+    {
+      "name": "summary_complete",
+      "dimension": "completeness",
+      "success": true,
+      "observed": 0.0,
+      "expectation": "<= 5% blank summaries"
+    },
+    {
+      "name": "summary_length",
+      "dimension": "validity",
+      "success": true,
+      "observed": 0.0,
+      "expectation": "<= 10% summaries shorter than 40 chars"
+    },
+    {
+      "name": "published_valid",
+      "dimension": "validity",
+      "success": true,
+      "observed": 0,
+      "expectation": "0 invalid dates"
+    },
+    {
+      "name": "age_days_valid",
+      "dimension": "validity",
+      "success": true,
+      "observed": 0.0,
+      "expectation": "<= 5% invalid ages"
+    },
+    {
+      "name": "freshness_ratio",
+      "dimension": "freshness",
+      "success": true,
+      "observed": 0.0,
+      "expectation": "<= 20% stale rows"
+    },
+    {
+      "name": "embedding_text_complete",
+      "dimension": "completeness",
+      "success": true,
+      "observed": 0.0,
+      "expectation": "0 blank embedding texts"
+    },
+    {
+      "name": "summary_chars_consistent",
+      "dimension": "consistency",
+      "success": true,
+      "observed": 0,
+      "expectation": "0 inconsistent rows"
+    }
+  ]
+}

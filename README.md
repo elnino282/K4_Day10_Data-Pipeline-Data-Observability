@@ -114,9 +114,13 @@ Mặc định project dùng Gemini:
 LLM_PROVIDER=gemini
 LLM_MODEL=gemini-2.5-flash
 GOOGLE_API_KEY=your_key_here
+OPENAI_API_KEY=your_openai_key_here
+EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 Project cũng hỗ trợ `openai`, `anthropic`, `openrouter`, `ollama` và OpenAI-compatible custom endpoint. Chỉ điền credential của provider bạn sử dụng.
+
+`LLM_PROVIDER` và embedding provider độc lập với nhau. Ví dụ, bạn có thể dùng Gemini cho LLM nhưng vẫn dùng `text-embedding-3-small` cho embedding; trường hợp này vẫn cần `OPENAI_API_KEY`. Sau khi đổi `EMBEDDING_MODEL`, hãy build lại Chroma index để tránh sai kích thước vector.
 
 Không commit `.env`, API key hoặc secret lên GitHub.
 

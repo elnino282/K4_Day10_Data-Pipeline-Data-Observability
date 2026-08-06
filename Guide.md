@@ -97,7 +97,7 @@ Phần này đã có code tham khảo ở:
 
 Cần đọc kỹ:
 
-- Cách dùng `sentence-transformers/all-MiniLM-L6-v2`
+- Cách lấy `EMBEDDING_MODEL` từ `.env` và dùng `text-embedding-3-small` với `OPENAI_API_KEY`
 - Cách tạo collection trong ChromaDB
 - Cách query top-k context
 

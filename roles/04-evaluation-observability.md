@@ -30,14 +30,15 @@ Mỗi sample trong `data/eval/test_set.json` phải có đủ:
 | `question_type` | Một trong `summary`, `authors`, `date`, `categories`. |
 | `question` | Câu hỏi có thể trả lời từ corpus đã clean. |
 | `ground_truth` | Đáp án tham chiếu lấy từ clean data thật. |
-| `ground_truth_doc_ids` | Danh sách `paper_id` thật, tồn tại trong clean data và index. |
+| `ground_truth_doc_ids` | Danh sách không rỗng gồm các `paper_id` thật, tồn tại trong baseline clean data và baseline index khi khóa test set. |
 
 Nguyên tắc so sánh:
 
 - Dùng cùng một test set, evaluator, embedding model và `top_k` cho baseline, corrupted và repaired.
 - Không tạo lại ground truth từ corrupted data và không loại câu hỏi chỉ vì corruption làm câu trả lời xấu đi.
 - Ghi nhận path và hash của test set khi freeze baseline; ba lần evaluation phải trỏ về cùng artifact đó.
-- Kiểm tra từng `ground_truth_doc_ids` với clean/index trước evaluation; ID tự tạo hoặc ID bị thiếu là blocker.
+- Trước baseline evaluation, kiểm tra field `ground_truth_doc_ids` là danh sách không rỗng và mọi ID tồn tại trong baseline clean/index; field sai/rỗng, ID tự tạo hoặc ID không tồn tại ở baseline là blocker.
+- Khi dùng test set đã khóa cho corrupted/repaired, ID vắng khỏi collection do corruption hoặc recovery failure là retrieval degradation/recovery evidence; vẫn chạy evaluation và không sửa test set để che sự vắng mặt đó.
 - Giữ nguyên cách judge và cấu hình Ragas giữa ba trạng thái; nếu judge fallback hoặc Ragas lỗi thì ghi rõ trạng thái, không trình bày như evaluation đầy đủ.
 
 ## Contract quality và freshness
@@ -111,13 +112,15 @@ Quality report không được hard-code pass. Freshness phải dùng ngày và 
 - [ ] Chạy quality/freshness corrupted và lưu artifact riêng, không ghi đè baseline.
 - [ ] Nối từng corruption có evidence với quality/freshness signal và metric/answer thay đổi.
 - [ ] Ghi cả signal không đổi; không suy diễn impact nếu metrics không thay đổi.
-- [ ] Escalate empty test set, missing ground-truth IDs, judge fallback, Ragas error hoặc freshness overwrite.
+- [ ] Escalate test set rỗng/sai contract hoặc ground-truth ID không tồn tại ở baseline; nếu ID chỉ vắng trong corrupted collection do corruption thì ghi retrieval degradation evidence và vẫn chạy evaluation.
+- [ ] Escalate judge fallback, Ragas error hoặc freshness overwrite theo blocker behavior đã định nghĩa.
 
 ### 03:15–04:00 — Repaired comparison, demo và release
 
 - [ ] Nhận repaired clean artifact có lineage từ raw/source đáng tin của Vai trò 2/Vai trò 1.
 - [ ] Nhận collection/manifest repaired riêng từ Vai trò 3.
 - [ ] Evaluate repaired bằng cấu hình đã freeze và lưu answers/metrics riêng.
+- [ ] Nếu ground-truth ID còn vắng trong repaired collection, ghi recovery failure evidence và vẫn hoàn tất evaluation; không sửa test set hoặc metrics.
 - [ ] Chạy quality/freshness repaired, xác minh artifact không ghi đè hai trạng thái trước.
 - [ ] Tạo comparison report với baseline, corrupted, repaired, delta và mức phục hồi.
 - [ ] Hoàn thành chuỗi bằng chứng corruption impact.
@@ -129,7 +132,7 @@ Quality report không được hard-code pass. Freshness phải dùng ngày và 
 | Producer | Consumer | Artifact/contract | Cách accept | Blocker behavior |
 | --- | --- | --- | --- | --- |
 | Vai trò 2 | Vai trò 4 | Cleaned dataframe/CSV/JSON với schema bắt buộc và stable `paper_id`. | Đọc được; không rỗng; cột đủ; ID không null/unique; dates và `age_days` kiểm tra được. | Dừng build test set; gửi danh sách cột/ID lỗi và sample evidence cho Vai trò 2, đồng thời báo Vai trò 1. |
-| Vai trò 3 | Vai trò 4 | Baseline/corrupted/repaired index manifest, collection riêng, embedding model và `top_k`. | Mọi ground-truth ID baseline tồn tại; collection/path tách biệt; model và `top_k` khớp manifest freeze. | Dừng evaluation trạng thái lỗi; không đổi test set để né missing ID; gửi IDs/config mismatch cho Vai trò 3 và Vai trò 1. |
+| Vai trò 3 | Vai trò 4 | Baseline/corrupted/repaired index manifest, collection riêng, embedding model và `top_k`. | Mọi ground-truth ID tồn tại ở baseline; collection/path tách biệt; model và `top_k` khớp manifest freeze. ID vắng ở corrupted/repaired được phân loại theo corruption/recovery evidence. | Chỉ dừng evaluation khi baseline thiếu ID hoặc config/collection sai contract; gửi mismatch cho Vai trò 3 và Vai trò 1. Nếu ID vắng ở corrupted/repaired do biến đổi dữ liệu, ghi retrieval degradation/recovery evidence và tiếp tục evaluation. |
 | Vai trò 4 | Vai trò 1 | Test-set path/hash, evaluation config, answers/metrics, quality/freshness và report inputs theo trạng thái. | File đọc được; schema đủ; test hash/config nhất quán; report value truy ngược được về artifact. | Không cho pipeline/report đánh dấu hoàn thành; gửi blocker kèm path và observed mismatch, không sửa metrics thủ công. |
 | Vai trò 4 | Vai trò 2 | Quality/freshness findings và document-level evidence liên quan corruption/repair. | Mỗi finding có state, check, observed value, affected IDs/count và artifact path. | Nếu không truy được tới row/ID thật, hạ kết luận thành chưa xác minh và yêu cầu artifact mới. |
 | Vai trò 4 | Vai trò 3 | Hit/miss evidence: question, expected IDs, retrieved IDs, contexts và config. | Có thể tái hiện trên đúng collection, model và `top_k`; không lẫn ba trạng thái. | Nếu collection hoặc config khác baseline freeze, loại kết quả khỏi comparison và yêu cầu chạy lại. |
@@ -137,7 +140,8 @@ Quality report không được hard-code pass. Freshness phải dùng ngày và 
 ## Escalation bắt buộc
 
 - Empty test set: dừng evaluation; không tạo metrics rỗng hoặc report giả.
-- Missing `ground_truth_doc_ids`: dừng evaluation; gửi danh sách ID thiếu cho Vai trò 2 và 3.
+- Invalid/missing `ground_truth_doc_ids` contract: dừng evaluation nếu field test-set sai/rỗng hoặc ID không tồn tại trong baseline clean/index; gửi sample/ID lỗi cho Vai trò 2, 3 và báo Vai trò 1.
+- Ground-truth ID vắng ở corrupted/repaired: không dừng nếu baseline contract đã hợp lệ; ghi affected IDs, state và retrieved evidence như degradation/recovery failure, rồi tiếp tục evaluation bằng test set đã khóa.
 - Judge fallback: ghi số sample/reasoning bị fallback; báo Vai trò 1 trước khi dùng judge metrics để kết luận.
 - Ragas error: lưu lỗi đã che secret, đánh dấu Ragas không hợp lệ; các metric còn lại phải được đánh giá riêng.
 - Freshness overwrite: dừng flow, bảo toàn artifact còn lại và thống nhất path riêng với Vai trò 1; không chạy tiếp bằng file đã bị ghi đè.

@@ -73,8 +73,10 @@ def load_settings(project_dir: Path | None = None) -> Settings:
     freshness_threshold_days = 180
     source_from_date = (datetime.now(UTC).date() - timedelta(days=freshness_threshold_days)).isoformat()
 
-    load_dotenv(workspace / ".env")
+    # Project-local settings take precedence over the optional workspace-level
+    # fallback. Existing process environment variables still remain highest.
     load_dotenv(root / ".env", override=False)
+    load_dotenv(workspace / ".env", override=False)
 
     data_dir = root / "data"
     paths = Paths(
@@ -119,7 +121,7 @@ def load_settings(project_dir: Path | None = None) -> Settings:
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         custom_llm_api_key=os.getenv("CUSTOM_LLM_API_KEY"),
         custom_llm_base_url=os.getenv("CUSTOM_LLM_BASE_URL"),
-        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+        embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
         baseline_collection_name="papers-baseline",
         corrupted_collection_name="papers-corrupted",
         repaired_collection_name="papers-repaired",
