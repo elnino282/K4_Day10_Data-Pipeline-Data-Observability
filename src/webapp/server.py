@@ -22,9 +22,9 @@ from retrieval.qa import answer_question
 
 
 STATE_LABELS = {
-    "baseline": "Ban đầu",
-    "corrupted": "Bị lỗi",
-    "repaired": "Phục hồi",
+    "baseline": "Mốc sạch",
+    "corrupted": "Cố ý làm lỗi",
+    "repaired": "Sau phục hồi",
 }
 
 QUESTION_TYPE_LABELS = {
@@ -125,6 +125,9 @@ class PipelineWorkspace:
                     "score": 1.0,
                     "status": "issue" if has_issue else "stale" if is_stale else "healthy",
                     "summary": str(row.get("summary", "")),
+                    "retrievedText": str(
+                        row.get("text_for_embedding") or row.get("summary", "")
+                    ),
                     "url": str(row.get("abs_url") or row.get("pdf_url") or ""),
                 }
             )
@@ -347,6 +350,7 @@ class PipelineWorkspace:
                 "score": round(float(item.score), 4),
                 "status": "healthy",
                 "summary": str(item.metadata.get("summary", "")),
+                "retrievedText": item.content,
                 "url": str(item.metadata.get("abs_url") or item.metadata.get("pdf_url") or ""),
             }
             for item in retrieved

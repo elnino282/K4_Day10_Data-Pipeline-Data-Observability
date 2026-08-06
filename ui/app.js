@@ -4,11 +4,12 @@ const app = {
   state: "baseline",
   view: "assistant",
   data: null,
+  currentSources: [],
 };
 
 const labels = {
   assistant: "Trợ lý nghiên cứu",
-  observability: "Giám sát dữ liệu",
+  observability: "Chất lượng & giám sát",
   documents: "Thư viện bài báo",
   evaluation: "Đánh giá",
 };
@@ -36,17 +37,47 @@ function renderSources(sourcePapers) {
     : app.data.sampleSources?.length
       ? app.data.sampleSources
       : app.data.papers.slice(0, 2);
+  app.currentSources = visibleSources;
   const container = document.querySelector("#source-cards");
   container.innerHTML = visibleSources.map((paper, index) => `
-    <article class="source-card">
+    <button class="source-card" type="button" data-source-index="${index}" aria-label="Mở chi tiết nguồn ${index + 1}">
       <div class="source-number">${index + 1}</div>
       <div>
         <h4>${escapeHtml(paper.title)}</h4>
         <p>${escapeHtml(paper.summary)}</p>
         <div class="source-meta"><span>${escapeHtml(paper.category)}</span><b>Khớp ${Math.round(paper.score * 100)}%</b></div>
       </div>
-    </article>
+    </button>
   `).join("");
+}
+
+function openSource(index) {
+  const paper = app.currentSources[index];
+  if (!paper) return;
+  document.querySelector("#source-modal-title").textContent = paper.title || "Nguồn không có tiêu đề";
+  document.querySelector("#source-modal-authors").textContent = paper.authors || "Không rõ tác giả";
+  document.querySelector("#source-modal-published").textContent = paper.published || "Không rõ";
+  document.querySelector("#source-modal-doi").textContent = paper.id || "Không có";
+  document.querySelector("#source-modal-score").textContent = `${Math.round((paper.score || 0) * 100)}%`;
+  document.querySelector("#source-modal-retrieved").textContent = paper.retrievedText || paper.summary || "Không có nội dung được lập chỉ mục.";
+  document.querySelector("#source-modal-summary").textContent = paper.summary || "Bản ghi Crossref này không có abstract.";
+  const link = document.querySelector("#source-modal-link");
+  if (paper.url) {
+    link.href = paper.url;
+    link.hidden = false;
+  } else {
+    link.removeAttribute("href");
+    link.hidden = true;
+  }
+  const modal = document.querySelector("#source-modal");
+  modal.hidden = false;
+  document.body.classList.add("modal-open");
+  modal.querySelector(".source-close").focus();
+}
+
+function closeSource() {
+  document.querySelector("#source-modal").hidden = true;
+  document.body.classList.remove("modal-open");
 }
 
 function renderMetricDecorations(state) {
@@ -64,9 +95,9 @@ function renderComparison() {
     <div class="comparison-row">
       <div class="comparison-label"><strong>${metric.label}</strong><span>${metric.baseline}${metric.suffix}</span></div>
       <div class="bar-stack">
-        <div><span>Ban đầu</span><i class="baseline-bar" style="width:${metric.baseline}%"></i><b>${metric.baseline}${metric.suffix}</b></div>
-        <div><span>Bị lỗi</span><i class="corrupted-bar" style="width:${metric.corrupted}%"></i><b>${metric.corrupted}${metric.suffix}</b></div>
-        <div><span>Phục hồi</span><i class="repaired-bar" style="width:${metric.repaired}%"></i><b>${metric.repaired}${metric.suffix}</b></div>
+        <div><span>Mốc sạch</span><i class="baseline-bar" style="width:${metric.baseline}%"></i><b>${metric.baseline}${metric.suffix}</b></div>
+        <div><span>Làm lỗi</span><i class="corrupted-bar" style="width:${metric.corrupted}%"></i><b>${metric.corrupted}${metric.suffix}</b></div>
+        <div><span>Sau sửa</span><i class="repaired-bar" style="width:${metric.repaired}%"></i><b>${metric.repaired}${metric.suffix}</b></div>
       </div>
     </div>
   `).join("");
@@ -144,7 +175,7 @@ function renderState() {
     : app.data.papers.slice(0, 2);
   bindText("sourceCount", sampleSources.length);
   document.querySelector("#citation-list").innerHTML = sampleSources.map((paper, index) =>
-    `<button class="citation-chip" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`
+    `<button class="citation-chip" data-source-index="${index}" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`
   ).join("");
   renderMetricDecorations(state);
   renderSources(sampleSources);
@@ -183,7 +214,8 @@ async function submitQuestion(question) {
   addUserMessage(question);
   const response = await askResearchQuestion(question, app.state);
   document.querySelector(".thinking-message")?.remove();
-  document.querySelector("#chat-thread").insertAdjacentHTML("beforeend", `<article class="message assistant-message"><div class="assistant-avatar">P</div><div class="message-content"><div class="message-label">PaperLens <span>Câu trả lời có nguồn</span></div><div class="message-body">${escapeHtml(response.answer)}</div><div class="citation-list">${response.sources.map((paper, index) => `<button class="citation-chip" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`).join("")}</div><div class="message-actions"><button type="button">Sao chép</button><button type="button">Hữu ích</button><button type="button">Chưa hữu ích</button></div></div></article>`);
+  app.currentSources = response.sources;
+  document.querySelector("#chat-thread").insertAdjacentHTML("beforeend", `<article class="message assistant-message"><div class="assistant-avatar">P</div><div class="message-content"><div class="message-label">PaperLens <span>Câu trả lời có nguồn</span></div><div class="message-body">${escapeHtml(response.answer)}</div><div class="citation-list">${response.sources.map((paper, index) => `<button class="citation-chip" data-source-index="${index}" type="button"><b>${index + 1}</b>${escapeHtml(paper.title)}</button>`).join("")}</div><div class="message-actions"><button type="button">Sao chép</button><button type="button">Hữu ích</button><button type="button">Chưa hữu ích</button></div></div></article>`);
   bindText("sourceCount", response.sources.length);
   renderSources(response.sources);
   document.querySelector("#chat-thread").scrollTop = document.querySelector("#chat-thread").scrollHeight;
@@ -196,6 +228,14 @@ document.querySelector("#paper-search").addEventListener("input", (event) => ren
 document.querySelector("#paper-table").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-url]");
   if (button?.dataset.url) window.open(button.dataset.url, "_blank", "noopener,noreferrer");
+});
+document.addEventListener("click", (event) => {
+  const sourceButton = event.target.closest("[data-source-index]");
+  if (sourceButton) openSource(Number(sourceButton.dataset.sourceIndex));
+  if (event.target.closest("[data-close-source]")) closeSource();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.querySelector("#source-modal").hidden) closeSource();
 });
 document.querySelector("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();

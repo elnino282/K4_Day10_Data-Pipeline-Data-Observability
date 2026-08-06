@@ -35,6 +35,7 @@ class PipelineWorkspaceTests(TestCase):
         self.assertEqual(len(baseline["evaluations"]), 24)
         self.assertEqual(len(baseline["comparisonMetrics"]), 3)
         self.assertTrue(baseline["sampleSources"])
+        self.assertTrue(baseline["sampleSources"][0]["retrievedText"])
         self.assertEqual(len(baseline["rawHash"]), 8)
 
     def test_workspace_rejects_unknown_state(self) -> None:
@@ -57,7 +58,7 @@ class PipelineWorkspaceTests(TestCase):
                 self.assertNotIn("apiKey", health)
             with urlopen(f"{base_url}/api/workspace?state=corrupted", timeout=5) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-                self.assertEqual(payload["state"]["label"], "Bị lỗi")
+                self.assertEqual(payload["state"]["label"], "Cố ý làm lỗi")
                 self.assertEqual(payload["state"]["hitRate"], 50.0)
         finally:
             server.shutdown()
