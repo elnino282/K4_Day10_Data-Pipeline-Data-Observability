@@ -76,7 +76,7 @@ uv run pytest -q
 |---|---|---|---|
 | Baseline pipeline | Thành công | 2026-08-06 | `baseline_metrics.json`, `phase1_report.md` |
 | Corruption flow | Thành công | 2026-08-06 | `comparison_metrics.json`, `corruption_report.md` |
-| Unit tests | 25 passed | 2026-08-06 | `tests/` và output pytest |
+| Unit tests | 49 passed | 2026-08-06 | `tests/` và output pytest |
 
 ## 5. Ingestion, cleaning và data contract
 
@@ -184,7 +184,7 @@ Hai chuỗi nguyên nhân–bằng chứng:
 - **Triệu chứng:** baseline retrieval hit là 1.0 nhưng token F1 ban đầu chỉ 0.75 ở nhóm câu category.
 - **Nguyên nhân gốc:** cleaning dùng `primary_category=uncategorized` khi Crossref thiếu subject, nhưng index metadata chỉ giữ `categories_joined`; QA vì thế trả chuỗi rỗng dù retrieve đúng document.
 - **Cách xử lý:** thêm `primary_category` vào metadata contract và fallback trong category answer extraction.
-- **Xác minh:** thêm regression test; pytest tăng lên 25 pass; chạy lại baseline cho token F1 1.0 và không còn answer trace lệch ground truth.
+- **Xác minh:** thêm regression test; pytest tăng lên 49 pass; chạy lại baseline cho token F1 1.0 và không còn answer trace lệch ground truth.
 
 ## 12. Giới hạn và hướng cải thiện
 
