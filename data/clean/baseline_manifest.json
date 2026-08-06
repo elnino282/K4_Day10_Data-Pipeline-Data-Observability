@@ -1,0 +1,144 @@
+{
+  "run_date": "2026-08-06",
+  "source": {
+    "api": "Crossref REST API",
+    "endpoint": "https://api.crossref.org/works",
+    "query": "agentic retrieval augmented generation large language model",
+    "filter": "from-pub-date:2026-02-07,has-abstract:true",
+    "rows": 24,
+    "sort": "relevance",
+    "order": "desc"
+  },
+  "clean_contract": {
+    "columns": [
+      "paper_id",
+      "title",
+      "summary",
+      "published",
+      "authors_joined",
+      "categories_joined",
+      "abs_url",
+      "pdf_url",
+      "text_for_embedding",
+      "age_days",
+      "summary_chars"
+    ],
+    "key": "paper_id",
+    "normalize_rules": [
+      "paper_id: strip + lowercase",
+      "title/summary: normalize_whitespace",
+      "authors/categories: join bang ', ', bo phan tu rong",
+      "published: bat buoc dinh dang YYYY-MM-DD",
+      "text_for_embedding: ghep section khong rong theo thu tu co dinh"
+    ],
+    "csv_read_convention": "Doc CSV bang pd.read_csv(path, keep_default_na=False). Cot rong (`categories_joined`, `pdf_url`) se thanh NaN float neu doc mac dinh, pha contract kieu chuoi. papers_clean.json khong dinh van de nay."
+  },
+  "counts": {
+    "clean_rows": 24,
+    "unique_paper_id": 24
+  },
+  "paper_id_sha256": "aeaec90934623c6250fc8635afaeb3902b0aaaa3f4f2f3704b14605eb348eced",
+  "paper_ids": [
+    "10.1007/s10278-026-02086-9",
+    "10.1093/sleep/zsag091.0346",
+    "10.1111/exsy.70341",
+    "10.20944/preprints202602.0996.v1",
+    "10.20944/preprints202604.0339.v1",
+    "10.21079/11681/50309",
+    "10.2118/234689-pa",
+    "10.21203/rs.3.rs-10012178/v1",
+    "10.21203/rs.3.rs-10178277/v1",
+    "10.21203/rs.3.rs-9770645/v1",
+    "10.21203/rs.3.rs-9882260/v1",
+    "10.2196/preprints.106157",
+    "10.22214/ijraset.2026.82233",
+    "10.32473/flairs.39.1.141782",
+    "10.3390/app16052244",
+    "10.3390/buildings16132637",
+    "10.35314/3y9hy151",
+    "10.36227/techrxiv.177272838.89432844/v1",
+    "10.47576/2949-1894.2026.7.7.023",
+    "10.52060/juptik.v4i1.4318",
+    "10.54254/2753-8818/2026.dl34055",
+    "10.55041/isjem07213",
+    "10.63646/kpqm1958",
+    "10.70121/001c.158711"
+  ],
+  "column_empty_counts": {
+    "paper_id": 0,
+    "title": 0,
+    "summary": 0,
+    "published": 0,
+    "authors_joined": 0,
+    "categories_joined": 24,
+    "abs_url": 0,
+    "pdf_url": 16,
+    "text_for_embedding": 0
+  },
+  "ranges": {
+    "age_days": [
+      5,
+      175
+    ],
+    "summary_chars": [
+      826,
+      2601
+    ],
+    "published": [
+      "2026-02-12",
+      "2026-08-01"
+    ]
+  },
+  "artifacts": {
+    "raw_api_response": {
+      "path": "data/raw/crossref_response.json",
+      "present": true,
+      "bytes": 245259,
+      "sha256": "248d5cda60fdde5b39720ed83eab6d71079d91eec1baae5d694f136a819c125f"
+    },
+    "raw_records_json": {
+      "path": "data/raw/crossref_records.json",
+      "present": true,
+      "bytes": 59636,
+      "sha256": "b4a49036bb32b7132a2463a7a292da927bb5e68a17c5eec9b58cfde0b59d0ca8"
+    },
+    "clean_csv": {
+      "path": "data/clean/papers_clean.csv",
+      "present": true,
+      "bytes": 96860,
+      "sha256": "ff0c4d7741748c90f56456bceab02534977cb288bbaf6500407235c1f788c829"
+    },
+    "clean_json": {
+      "path": "data/clean/papers_clean.json",
+      "present": true,
+      "bytes": 109068,
+      "sha256": "80048d0e78221d24c8dbefb4f0228e2b6eb69450c3309024faa9769dd71309e3"
+    }
+  },
+  "cleaning_trace": {
+    "run_date": "2026-08-06",
+    "records_in": 24,
+    "records_out": 24,
+    "dropped_count": 0,
+    "dropped": [],
+    "duplicate_keys": [],
+    "normalize_rules": [
+      "paper_id: strip + lowercase",
+      "title/summary: normalize_whitespace",
+      "authors/categories: join bang ', ', bo phan tu rong",
+      "published: bat buoc dinh dang YYYY-MM-DD",
+      "text_for_embedding: ghep section khong rong theo thu tu co dinh"
+    ]
+  },
+  "recovery": {
+    "source_of_truth": "data/raw/crossref_records.json",
+    "criteria": [
+      "schema giong baseline",
+      "row count giong baseline",
+      "tap paper_id giong baseline",
+      "noi dung canonical tung record giong baseline",
+      "danh gia tren cung test set"
+    ],
+    "note": "Repaired phai rerun cleaning voi dung run_date nay. Metric recovery mot minh khong du."
+  }
+}

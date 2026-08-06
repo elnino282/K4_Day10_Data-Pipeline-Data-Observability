@@ -23,12 +23,12 @@ Không ghi secret. Không sửa tay dữ liệu corrupted và không copy baseli
 ## Kế hoạch phối hợp
 
 ### 00:00–00:30 — Chốt nguồn/model
-- [ ] Xác minh endpoint/query/filter Crossref với Vai trò 1.
-- [ ] Chốt mapping payload sang `PaperRecord`, quy tắc `paper_id`, run date, sort và deduplicate.
+- [x] Xác minh endpoint/query/filter Crossref với Vai trò 1.
+- [x] Chốt mapping payload sang `PaperRecord`, quy tắc `paper_id`, run date, sort và deduplicate.
 
 ### 00:30–01:05 — Fetch/load và snapshot
-- [ ] Fetch/load Crossref trong `src/ingestion/crossref.py`; lưu raw HTTP payload và `PaperRecord` snapshot.
-- [ ] Dùng retry/backoff có giới hạn cho lỗi tạm thời (đặc biệt 429/503), log lỗi cuối không kèm credential.
+- [x] Fetch/load Crossref trong `src/ingestion/crossref.py`; lưu raw HTTP payload và `PaperRecord` snapshot.
+- [x] Dùng retry/backoff có giới hạn cho lỗi tạm thời (đặc biệt 429/503), log lỗi cuối không kèm credential.
 
 ### 01:05–01:35 — Cleaning truy vết
 - [ ] Chuẩn hóa và ghi/return record vào, record loại, lý do loại, rule normalize, duplicate key.
