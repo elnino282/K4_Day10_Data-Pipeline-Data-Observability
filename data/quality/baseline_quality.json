@@ -1,0 +1,87 @@
+{
+  "state": "baseline",
+  "measured_at_utc": "2026-08-06T09:26:12.755814+00:00",
+  "input_rows": 24,
+  "freshness_threshold_days": 180,
+  "passed": true,
+  "checks": [
+    {
+      "name": "required_columns_present",
+      "observed": [],
+      "expectation": "no missing required columns",
+      "passed": true
+    },
+    {
+      "name": "row_count",
+      "observed": 24,
+      "expectation": "row count > 0",
+      "passed": true
+    },
+    {
+      "name": "paper_id_not_null",
+      "observed": 0,
+      "expectation": "0 blank/null paper_id values",
+      "passed": true
+    },
+    {
+      "name": "paper_id_unique",
+      "observed": 0,
+      "expectation": "0 duplicate paper_id values",
+      "passed": true
+    },
+    {
+      "name": "title_not_empty",
+      "observed": 0,
+      "expectation": "0 blank/null title values",
+      "passed": true
+    },
+    {
+      "name": "summary_not_empty",
+      "observed": 0,
+      "expectation": "0 blank/null summary values",
+      "passed": true
+    },
+    {
+      "name": "summary_min_length",
+      "observed": 0,
+      "expectation": "0 non-empty summaries shorter than 80 chars",
+      "passed": true
+    },
+    {
+      "name": "duplicate_rows",
+      "observed": 0,
+      "expectation": "0 exact duplicate rows",
+      "passed": true
+    },
+    {
+      "name": "age_days_present",
+      "observed": 0,
+      "expectation": "0 missing/non-numeric age_days values",
+      "passed": true
+    },
+    {
+      "name": "age_days_non_negative",
+      "observed": 0,
+      "expectation": "0 negative age_days values",
+      "passed": true
+    },
+    {
+      "name": "freshness_threshold",
+      "observed": 0,
+      "expectation": "0 rows older than 180 days",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "missing_columns": [],
+    "null_paper_ids": 0,
+    "duplicate_paper_ids": 0,
+    "empty_titles": 0,
+    "empty_summaries": 0,
+    "short_summaries": 0,
+    "duplicate_rows": 0,
+    "missing_age_days": 0,
+    "negative_age_days": 0,
+    "stale_rows": 0
+  }
+}

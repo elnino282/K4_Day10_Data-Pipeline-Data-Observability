@@ -1,0 +1,12 @@
+{
+  "measured_at_utc": "2026-08-06T09:26:12.760800+00:00",
+  "latest_published": "2026-08-01",
+  "oldest_published": "2026-02-12",
+  "stale_rows": 0,
+  "total_rows": 24,
+  "invalid_published": 0,
+  "missing_age_days": 0,
+  "freshness_threshold_days": 180,
+  "status": "fresh",
+  "is_fresh": true
+}
